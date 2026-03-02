@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Internet Arcade – Play Classic Games</title>
+  <meta name="description" content="Step inside the Internet Arcade – click any machine and play classic arcade games powered by the Internet Archive." />
+
+  <!-- Pixel / retro font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap"
+    rel="stylesheet"
+  />
+
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- ── Header ─────────────────────────────────────── -->
+  <header>
+    <h1 class="arcade-title">&#x1F579; Internet Arcade</h1>
+    <p class="arcade-subtitle">Powered by the&nbsp;<a href="https://archive.org/details/internetarcade" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline;">Internet Archive</a></p>
+    <p class="insert-coin" id="insert-coin">INSERT COIN &nbsp;&#x25BA;&nbsp; PRESS START</p>
+  </header>
+
+  <!-- Animated neon strip -->
+  <div class="neon-strip"></div>
+
+  <!-- ── Main Content ────────────────────────────────── -->
+  <main>
+    <p class="section-title">&#x2605; SELECT YOUR GAME &#x2605;</p>
+    <!-- Cabinets injected by script.js -->
+    <div class="game-grid" id="game-grid"></div>
+  </main>
+
+  <!-- ── Footer ──────────────────────────────────────── -->
+  <footer>
+    <p>Games &copy; their respective owners &bull; Emulation via <a href="https://archive.org" target="_blank" rel="noopener">archive.org</a></p>
+    <p style="margin-top:0.5rem;">Press <kbd style="color:var(--neon-yellow)">C</kbd> to insert a coin &bull; Click any machine to play</p>
+  </footer>
+
+  <!-- ── Game Modal ──────────────────────────────────── -->
+  <div class="modal-overlay" id="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal-inner">
+      <div class="modal-header">
+        <span class="modal-title" id="modal-title"></span>
+        <button class="modal-close" id="modal-close" aria-label="Close game">&#x2715;</button>
+      </div>
+      <div class="modal-game-wrap" id="modal-game-wrap">
+        <div class="modal-loading" id="modal-loading">
+          <div class="spinner"></div>
+          <span>LOADING GAME&hellip;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
