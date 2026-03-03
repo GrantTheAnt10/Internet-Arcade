@@ -17,7 +17,9 @@ const absoluteUrl = (path) => (path.startsWith("http") ? path : `${BASE_URL}${pa
 
 const loadGame = (path) => {
   frame.src = absoluteUrl(path);
-  const gameName = (path || "").split("/").pop() || "classic-game";
+  const gameName = ((path || "").split("/").pop() || "classic-game")
+    .replace(/\.html$/i, "")
+    .replace(/-/g, " ");
   statusText.textContent = `Now loading: ${gameName}`;
 };
 
@@ -63,7 +65,7 @@ const loadGamesList = async () => {
     const links = parseGameLinks(html);
     if (links.length > 0) {
       gameLinks = [...new Set(links)];
-      statusText.textContent = "Fetched games from classicgamesarcade.com";
+      statusText.textContent = `Loaded ${gameLinks.length} games from classicgamesarcade.com`;
       return;
     }
     throw new Error("No game links found");
