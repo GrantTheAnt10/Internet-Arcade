@@ -27,7 +27,12 @@ const setActiveMachine = (button) => {
   screenWrap.scrollIntoView({ behavior: "smooth", block: "center" });
 };
 
-const chooseGameForMachine = (machineIndex) => gameLinks[machineIndex % gameLinks.length] || FALLBACK_GAMES[0];
+const chooseGameForMachine = (machineIndex) => {
+  if (!gameLinks.length) {
+    return FALLBACK_GAMES[0];
+  }
+  return gameLinks[machineIndex % gameLinks.length] || FALLBACK_GAMES[0];
+};
 
 const wireMachines = () => {
   machines.forEach((machine, index) => {
@@ -61,7 +66,8 @@ const loadGamesList = async () => {
       return;
     }
     throw new Error("No game links found");
-  } catch (_error) {
+  } catch (error) {
+    console.warn("Could not fetch game list from classicgamesarcade.com:", error);
     statusText.textContent = "Using curated classicgamesarcade.com game list.";
   }
 };
