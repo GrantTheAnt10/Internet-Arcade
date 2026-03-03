@@ -17,7 +17,8 @@ const absoluteUrl = (path) => (path.startsWith("http") ? path : `${BASE_URL}${pa
 
 const loadGame = (path) => {
   frame.src = absoluteUrl(path);
-  statusText.textContent = `Now loading: ${path.split("/").pop()}`;
+  const gameName = (path || "").split("/").pop() || "classic-game";
+  statusText.textContent = `Now loading: ${gameName}`;
 };
 
 const setActiveMachine = (button) => {
