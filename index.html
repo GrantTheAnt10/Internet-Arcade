@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Internet Arcade</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="arcade-room">
+      <header class="hero">
+        <h1>Internet Arcade</h1>
+        <p>Select a machine to zoom in and play.</p>
+      </header>
+
+      <section class="machine-grid" id="machineGrid">
+        <button class="machine" data-game="/games/asteroids-arcade-game.html" aria-label="Asteroids cabinet">
+          <span class="led"></span>
+          <span class="cabinet">Asteroids</span>
+        </button>
+        <button class="machine" data-game="/games/pacman-arcade-game.html" aria-label="Pac-Man cabinet">
+          <span class="led"></span>
+          <span class="cabinet">Pac-Man</span>
+        </button>
+        <button class="machine" data-game="/games/galaga-arcade-game.html" aria-label="Galaga cabinet">
+          <span class="led"></span>
+          <span class="cabinet">Galaga</span>
+        </button>
+      </section>
+
+      <section class="screen-wrap" id="screenWrap" aria-live="polite">
+        <div class="screen crt">
+          <iframe id="gameFrame" title="Classic arcade game"></iframe>
+        </div>
+        <p id="status">Loading available games…</p>
+      </section>
+    </main>
+    <script src="./script.js"></script>
+  </body>
+</html>
