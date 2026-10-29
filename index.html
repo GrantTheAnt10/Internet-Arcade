@@ -1,0 +1,413 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Internet Arcade</title>
+<style>
+:root{
+  --bg:#07040f; --wall1:#1a0f33; --wall2:#0b0718; --neon:#ff3bd4; --neon2:#28d7ff; --ink:#f4f0ff;
+  --cabW:360px; --cabH:690px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--ink);
+  font-family:"Arial Black","Impact","Helvetica Neue",Arial,sans-serif;user-select:none;-webkit-user-select:none;
+  -webkit-tap-highlight-color:transparent;touch-action:none}
+
+/* ---------- the room ---------- */
+#room{position:fixed;inset:0;overflow:hidden;cursor:grab;
+  background:
+    radial-gradient(ellipse 80% 30% at 50% calc(var(--fy,58vh) + 40px),rgba(255,59,212,.16),transparent 70%),
+    linear-gradient(180deg,var(--wall1) 0px,var(--wall2) var(--fy,58vh),#05030a calc(var(--fy,58vh) + 2px),#0d0820 100%)}
+#room.dragging{cursor:grabbing}
+#room::before{ /* neon strip along the wall */
+  content:"";position:absolute;left:0;right:0;top:calc(var(--fy,58vh) - 40px);height:4px;background:var(--neon2);
+  box-shadow:0 0 12px var(--neon2),0 0 40px var(--neon2);opacity:.75}
+#room::after{ /* perspective floor grid */
+  content:"";position:absolute;left:-50%;right:-50%;top:var(--fy,58vh);bottom:-40%;
+  background:
+    repeating-linear-gradient(90deg,rgba(255,59,212,.28) 0 2px,transparent 2px 90px),
+    repeating-linear-gradient(0deg,rgba(255,59,212,.28) 0 2px,transparent 2px 70px);
+  transform:perspective(420px) rotateX(62deg);transform-origin:50% 0;
+  mask-image:linear-gradient(180deg,rgba(0,0,0,.9),transparent 75%);-webkit-mask-image:linear-gradient(180deg,rgba(0,0,0,.9),transparent 75%)}
+#world{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform;z-index:1}
+#world.anim{transition:transform .85s cubic-bezier(.65,0,.25,1)}
+#world.glide{transition:transform .45s cubic-bezier(.2,.7,.2,1)}
+
+#sign{position:fixed;left:0;right:0;top:max(14px,env(safe-area-inset-top));text-align:center;z-index:5;pointer-events:none;
+  font-style:italic;font-size:clamp(26px,6vw,56px);letter-spacing:3px;color:#fff;
+  text-shadow:0 0 6px var(--neon),0 0 18px var(--neon),0 0 40px var(--neon);transition:opacity .4s, transform .4s;
+  animation:flick 6s infinite}
+#sign span{color:#e8fbff;text-shadow:0 0 6px var(--neon2),0 0 18px var(--neon2),0 0 40px var(--neon2)}
+@keyframes flick{0%,92%,100%{opacity:1}93%{opacity:.4}94%{opacity:1}96%{opacity:.6}}
+#hint{position:fixed;left:0;right:0;bottom:max(14px,env(safe-area-inset-bottom));text-align:center;z-index:5;pointer-events:none;
+  font-family:Arial,sans-serif;font-weight:bold;font-size:clamp(11px,2.6vw,15px);opacity:.85;transition:opacity .4s;padding:0 12px}
+#hint kbd,#legend kbd{font-family:inherit;background:#fff;color:#111;border-radius:4px;padding:1px 7px;box-shadow:0 2px 0 #888;margin:0 2px;white-space:nowrap}
+#arrows{position:fixed;inset:0;pointer-events:none;z-index:5;transition:opacity .4s}
+#arrows button{pointer-events:auto;position:absolute;top:50%;transform:translateY(-50%);width:48px;height:72px;border:0;border-radius:12px;
+  background:rgba(0,0,0,.35);color:#fff;font-size:28px;cursor:pointer}
+#arrows button:hover{background:rgba(255,59,212,.35)}
+#arrows .l{left:10px} #arrows .r{right:10px}
+body.zoomed #sign,body.zoomed #hint,body.zoomed #arrows{opacity:0;pointer-events:none}
+body.zoomed #sign{transform:translateY(-30px);animation:none;visibility:hidden}
+body.zoomed #room{cursor:default}
+
+/* ---------- cabinets (all sizes in design pixels, scaled by the camera) ---------- */
+.cab{position:absolute;top:0;width:var(--cabW);height:var(--cabH);transition:filter .4s,transform .4s;transform-origin:50% 100%}
+.cab:not(.sel){filter:brightness(.5) saturate(.8);transform:scale(.94)}
+body.zoomed .cab:not(.sel){filter:brightness(.25)}
+.cab .body{position:absolute;inset:0 6px 0 6px;border-radius:16px 16px 6px 6px;
+  background:linear-gradient(90deg,#120c22 0%,#231a3e 8%,#1b1430 50%,#231a3e 92%,#120c22 100%);
+  box-shadow:inset 0 0 0 3px #000,0 30px 60px rgba(0,0,0,.6)}
+.cab .side{position:absolute;top:-6px;bottom:0;width:20px;border-radius:10px 10px 4px 4px;
+  background:linear-gradient(180deg,var(--c1),var(--c2) 45%,#120a20 46%,#120a20 54%,var(--c1) 55%,var(--c2));
+  box-shadow:inset 0 0 0 2px rgba(0,0,0,.6),0 0 18px color-mix(in srgb,var(--c1) 50%,transparent)}
+.cab .side.l{left:0} .cab .side.r{right:0}
+.cab .marquee{position:absolute;left:18px;right:18px;top:8px;height:84px;border-radius:10px;overflow:hidden;
+  background:linear-gradient(180deg,#fff 0%,var(--c2) 18%,var(--c1) 100%);box-shadow:0 0 0 4px #000,0 0 30px var(--c1);
+  display:flex;align-items:center;justify-content:center}
+.cab .marquee span{font-style:italic;font-size:34px;letter-spacing:1px;color:#fff;transform:skewX(-8deg);white-space:nowrap;
+  text-shadow:3px 3px 0 #1a0b02,-1px -1px 0 #1a0b02,0 0 18px rgba(255,255,255,.7)}
+.cab.sel .marquee{animation:marq 2.4s ease-in-out infinite}
+@keyframes marq{50%{box-shadow:0 0 0 4px #000,0 0 55px var(--c1)}}
+.cab .bezel{position:absolute;left:18px;top:104px;width:324px;height:256px;border-radius:14px;
+  background:radial-gradient(ellipse at 50% 0%,#3a3550,#14111f 70%);box-shadow:inset 0 0 0 3px #000,inset 0 8px 18px rgba(255,255,255,.08)}
+.cab .screen{position:absolute;left:18px;top:20px;width:288px;height:216px;border-radius:10px;overflow:hidden;background:#000;
+  box-shadow:0 0 0 3px #000,0 0 22px color-mix(in srgb,var(--c1) 40%,transparent)}
+.cab .glass{position:absolute;inset:0;pointer-events:none;border-radius:10px;
+  background:
+    repeating-linear-gradient(180deg,rgba(255,255,255,.035) 0 1px,rgba(0,0,0,.22) 1px 3px),
+    radial-gradient(ellipse at 50% 50%,transparent 58%,rgba(0,0,0,.55) 100%),
+    linear-gradient(135deg,rgba(255,255,255,.14) 0%,transparent 30%)}
+.cab .panel{position:absolute;left:10px;right:10px;top:372px;height:132px;border-radius:12px 12px 22px 22px;
+  background:linear-gradient(180deg,#3b2f63 0%,#241c40 30%,#191230 100%);box-shadow:inset 0 3px 0 rgba(255,255,255,.15),inset 0 0 0 3px #000,0 10px 20px rgba(0,0,0,.5)}
+.cab .panel::before{content:"";position:absolute;left:10px;right:10px;top:8px;bottom:12px;border-radius:10px;
+  background:linear-gradient(110deg,var(--c1) 0 30%,transparent 30% 34%,var(--c2) 34% 38%,transparent 38%);opacity:.18}
+.stick{position:absolute;left:26px;top:8px;width:92px;height:92px;border-radius:50%;
+  background:radial-gradient(circle at 50% 45%,#0b0814 0 22%,#2a2244 23% 60%,#0d0918 62%);box-shadow:inset 0 0 0 3px #000,0 4px 0 #000;touch-action:none}
+.stick .knob{position:absolute;left:50%;top:50%;width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;
+  background:radial-gradient(circle at 35% 30%,#fff 0 6%,var(--c1) 30%,color-mix(in srgb,var(--c1) 55%,#000) 100%);
+  box-shadow:0 6px 0 rgba(0,0,0,.55),inset 0 -4px 6px rgba(0,0,0,.35);transition:transform .08s}
+.pbs{position:absolute;right:14px;top:8px;width:160px;height:116px}
+.pb{position:absolute;width:48px;height:48px;border-radius:50%;border:0;padding:0;cursor:pointer;touch-action:none;
+  background:radial-gradient(circle at 38% 32%,rgba(255,255,255,.85) 0 7%,var(--b) 32%,color-mix(in srgb,var(--b) 55%,#000) 100%);
+  box-shadow:0 6px 0 #000,inset 0 -5px 8px rgba(0,0,0,.35);transition:transform .06s,box-shadow .06s}
+.pb.on{transform:translateY(4px);box-shadow:0 2px 0 #000,0 0 22px var(--b),inset 0 -5px 8px rgba(0,0,0,.35)}
+.pb i{position:absolute;left:50%;top:50px;transform:translateX(-50%);font-style:normal;font-family:Arial,sans-serif;font-weight:bold;font-size:10px;letter-spacing:.5px;color:#cfc6ef;white-space:nowrap;pointer-events:none}
+.start{position:absolute;left:44px;top:104px;width:56px;height:20px;border:0;border-radius:11px;cursor:pointer;touch-action:none;
+  background:linear-gradient(180deg,#fff,#c9c3dd);color:#111;font:bold 10px Arial,sans-serif;letter-spacing:1px;box-shadow:0 3px 0 #000}
+.start.on{transform:translateY(2px);box-shadow:0 1px 0 #000}
+/* controls only respond on the machine you are playing */
+.cab:not(.active) .stick,.cab:not(.active) .pb,.cab:not(.active) .start{pointer-events:none}
+.cab .coin{position:absolute;left:50%;top:520px;width:150px;height:96px;margin-left:-75px;border-radius:8px;
+  background:linear-gradient(180deg,#2a2240,#160f28);box-shadow:inset 0 0 0 3px #000;display:flex;align-items:center;justify-content:center;gap:22px}
+.cab .coin i{display:block;width:30px;height:46px;border-radius:5px;background:#0a0710;box-shadow:inset 0 0 0 2px #000,0 0 12px rgba(255,59,59,.5);position:relative}
+.cab .coin i::after{content:"";position:absolute;left:13px;top:8px;width:4px;height:20px;border-radius:2px;background:#ff4a3a;box-shadow:0 0 8px #ff4a3a}
+.cab .plate{position:absolute;left:50%;top:calc(var(--cabH) + 18px);transform:translateX(-50%);white-space:nowrap;font-style:italic;font-size:22px;
+  color:#fff;text-shadow:0 0 10px var(--c1);transition:opacity .4s}
+.cab .plate small{display:block;text-align:center;font:bold 13px Arial,sans-serif;opacity:.75;font-style:normal;letter-spacing:1px}
+body.zoomed .plate{opacity:0}
+.cab .floorglow{position:absolute;left:-20px;right:-20px;top:calc(var(--cabH) - 30px);height:60px;border-radius:50%;
+  background:radial-gradient(ellipse,color-mix(in srgb,var(--c1) 45%,transparent),transparent 70%);filter:blur(6px);z-index:-1}
+
+/* ---------- attract screens ---------- */
+.attract{position:absolute;inset:0;overflow:hidden}
+.att-hillhop{background:linear-gradient(180deg,#0d1650 0%,#5a2a7a 34%,#ff7a3a 62%,#ffcf6a 74%)}
+.att-hillhop .sun{position:absolute;left:50%;top:44%;width:84px;height:84px;margin-left:-42px;border-radius:50%;
+  background:linear-gradient(180deg,#fff3a0,#ff8a2a);box-shadow:0 0 40px #ffb04a}
+.att-hillhop .mts{position:absolute;left:-10%;right:-10%;bottom:28%;height:38%;background:#3b2052;
+  clip-path:polygon(0 100%,8% 40%,18% 70%,30% 10%,42% 65%,55% 25%,68% 70%,80% 20%,92% 60%,100% 35%,100% 100%)}
+.att-hillhop .hills{position:absolute;left:-20%;right:-20%;bottom:-2%;height:36%;background:#7a3b1a;
+  border-radius:50% 50% 0 0/100% 100% 0 0;animation:roll 3s linear infinite}
+.att-hillhop .hills::before{content:"";position:absolute;left:30%;top:-26px;width:110px;height:40px;background:#9a4a22;clip-path:polygon(0 100%,100% 0,100% 100%)}
+@keyframes roll{50%{transform:translateY(5px)}}
+.att-hillhop .bike{position:absolute;left:38%;bottom:30%;font-size:34px;animation:hop 1.6s ease-in-out infinite;filter:drop-shadow(2px 3px 0 #1a0b02)}
+@keyframes hop{0%,100%{transform:translate(0,0) rotate(0)}45%{transform:translate(26px,-46px) rotate(-14deg)}70%{transform:translate(40px,-30px) rotate(8deg)}}
+.att-title{position:absolute;left:0;right:0;top:12%;text-align:center;font-style:italic;font-size:38px;line-height:.9;transform:skewX(-8deg);
+  background:linear-gradient(180deg,#fff7b0,#ffe14d 35%,#ff8a00 65%,#d1260b);-webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(3px 3px 0 #1a0b02)}
+.att-title small{display:block;font-size:20px;letter-spacing:4px;background:linear-gradient(180deg,#bff6ff,#28d7ff 55%,#1060ff);-webkit-background-clip:text;background-clip:text}
+.press{position:absolute;left:0;right:0;bottom:8%;text-align:center;font:bold 13px Arial,sans-serif;letter-spacing:2px;color:#fff;
+  text-shadow:0 0 6px #000,0 0 2px #000;animation:blinkT 1.1s steps(2) infinite}
+@keyframes blinkT{50%{opacity:0}}
+.att-soon{background:#06040c}
+.att-soon::before{content:"";position:absolute;inset:-50%;opacity:.22;
+  background:repeating-radial-gradient(circle at 17% 32%,#fff 0 1px,transparent 1px 3px),repeating-radial-gradient(circle at 73% 61%,#fff 0 1px,transparent 1px 4px);
+  animation:static .25s steps(3) infinite}
+@keyframes static{33%{transform:translate(7px,-11px)}66%{transform:translate(-9px,5px)}}
+.att-soon .att-title{top:30%;font-size:30px;background:linear-gradient(180deg,#fff,var(--c2) 50%,var(--c1));-webkit-background-clip:text;background-clip:text}
+
+/* ---------- playing ---------- */
+#frame{position:fixed;border:0;background:#000;z-index:3;opacity:0;transition:opacity .35s;border-radius:6px}
+#frame.show{opacity:1}
+#legend{position:fixed;z-index:4;left:50%;transform:translate(-50%,10px);opacity:0;pointer-events:none;
+  transition:opacity .6s .25s,transform .6s .25s;font-family:Arial,sans-serif;font-weight:bold;font-size:14px;
+  display:flex;flex-wrap:wrap;justify-content:center;gap:8px 18px;padding:10px 16px;max-width:96vw;
+  background:rgba(8,5,18,.72);border:2px solid rgba(255,255,255,.18);border-radius:12px}
+#legend.show{opacity:1;transform:translate(-50%,0)}
+#legend span{white-space:nowrap}
+#back{position:fixed;z-index:6;left:max(12px,env(safe-area-inset-left));top:max(12px,env(safe-area-inset-top));border:2px solid #fff;border-radius:10px;
+  background:rgba(8,5,18,.75);color:#fff;font:italic 15px "Arial Black",Arial,sans-serif;padding:8px 14px;cursor:pointer;
+  opacity:0;pointer-events:none;transition:opacity .4s}
+body.zoomed #back{opacity:1;pointer-events:auto}
+@media (pointer:coarse){#arrows{display:none}}
+@media (prefers-reduced-motion:reduce){#world.anim,#world.glide{transition-duration:.01s}.att-hillhop .bike,.att-soon::before{animation:none}}
+</style>
+</head>
+<body>
+<div id="room"><div id="world"></div></div>
+<div id="sign">INTERNET <span>ARCADE</span></div>
+<div id="arrows"><button class="l" aria-label="Previous machine">◀</button><button class="r" aria-label="Next machine">▶</button></div>
+<div id="hint"></div>
+<button id="back">◀ ARCADE</button>
+<div id="legend"></div>
+<iframe id="frame" title="Arcade game" allow="autoplay; gamepad; fullscreen" hidden></iframe>
+
+<script>
+'use strict';
+/* Machines in the room. A machine with `src` is playable; the others show a "coming soon" screen. */
+const MACHINES = [
+  { title: 'COMING SOON', sub: 'Slot 1', c1: '#28d7ff', c2: '#1060ff' },
+  { title: 'HILL HOP 64', sub: 'Arcade motocross', c1: '#ff6a00', c2: '#ffe14d', art: 'hillhop', src: 'HillHop64.html?embed=1',
+    legend: [['← →', 'Steer'], ['↑ ↓', 'Lean / pitch'], ['Space', 'Pre-load jump'], ['L / Shift', 'Turbo'], ['K', 'Brake'], ['J', 'Gas (Auto-gas off)'],
+             ['C', 'Camera'], ['R', 'Reset bike'], ['Esc', 'Pause · on the title screen, back to the arcade']],
+    buttons: [['GAS', 'KeyJ', '#3bff4a'], ['TURBO', 'KeyL', '#28d7ff'], ['BRAKE', 'KeyK', '#ff3b1f'], ['JUMP', 'Space', '#ffe14d']] },
+  { title: 'COMING SOON', sub: 'Slot 3', c1: '#ff3bd4', c2: '#7a2cff' },
+  { title: 'COMING SOON', sub: 'Slot 4', c1: '#3bff4a', c2: '#18b33a' },
+  { title: 'COMING SOON', sub: 'Slot 5', c1: '#ffe14d', c2: '#ff3b1f' },
+];
+const DEFAULT_BUTTONS = [['A', 'KeyJ', '#3bff4a'], ['B', 'KeyL', '#28d7ff'], ['C', 'KeyK', '#ff3b1f'], ['D', 'Space', '#ffe14d']];
+
+const CAB_W = 360, CAB_H = 690, GAP = 90, PITCH = CAB_W + GAP;
+// regions inside a cabinet (design px)
+const BEZEL = { x: 18, y: 104, w: 324, h: 256 }, SCREEN = { x: 36, y: 124, w: 288, h: 216 };
+const PLAY_MOBILE = { x: 4, y: 96, w: CAB_W - 8, h: 512 - 96 };   // screen + control panel
+
+const $ = s => document.querySelector(s);
+const room = $('#room'), world = $('#world'), frame = $('#frame'), legend = $('#legend'), hint = $('#hint');
+const isTouch = () => matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0;
+const mobileLayout = () => isTouch() && Math.min(innerWidth, innerHeight) < 820;
+
+/* ---------- build the room ---------- */
+const cabs = MACHINES.map((m, i) => {
+  const el = document.createElement('div');
+  el.className = 'cab'; el.style.left = (i * PITCH) + 'px';
+  el.style.setProperty('--c1', m.c1); el.style.setProperty('--c2', m.c2);
+  const att = m.art === 'hillhop'
+    ? `<div class="attract att-hillhop"><div class="sun"></div><div class="mts"></div><div class="hills"></div><div class="bike">🏍️</div>
+        <div class="att-title">HILL HOP<small>64</small></div><div class="press">PRESS START</div></div>`
+    : `<div class="attract att-soon"><div class="att-title">COMING<br>SOON</div><div class="press">NO GAME LOADED</div></div>`;
+  const btns = (m.buttons || DEFAULT_BUTTONS).map(([label, code, col], k) =>
+    `<button class="pb" data-code="${code}" style="--b:${col};left:${(k % 2) * 78 + 16}px;top:${k > 1 ? 60 : 2}px" aria-label="${label}"><i>${label}</i></button>`).join('');
+  el.innerHTML = `<div class="floorglow"></div><div class="body"></div><div class="side l"></div><div class="side r"></div>
+    <div class="marquee"><span>${m.title}</span></div>
+    <div class="bezel"><div class="screen">${att}<div class="glass"></div></div></div>
+    <div class="panel"><button class="start" aria-label="Start">START</button><div class="stick" aria-label="Joystick"><div class="knob"></div></div><div class="pbs">${btns}</div></div>
+    <div class="coin"><i></i><i></i></div>
+    <div class="plate">${m.title}<small>${m.sub}</small></div>`;
+  world.appendChild(el);
+  return el;
+});
+
+/* ---------- camera ---------- */
+let sel = 1, camX = sel * PITCH + CAB_W / 2, mode = 'hall', cur = null;
+// zoomed-out view: leave room for the sign above and the name plates and hint below
+function hallView(cx) {
+  const top = Math.min(110, innerHeight * 0.14), bottom = Math.min(110, innerHeight * 0.16), avail = innerHeight - top - bottom;
+  const across = innerWidth < 700 ? 1.55 : 2.5;           // phones: one machine with its neighbours peeking in
+  const s = Math.min(avail / CAB_H, innerWidth / (CAB_W * across));
+  const ty = top + (avail - CAB_H * s) / 2;
+  room.style.setProperty('--fy', (ty + CAB_H * s) + 'px');
+  return { s, tx: innerWidth / 2 - cx * s, ty };
+}
+// fit a region of cabinet i into a box on screen
+function fitView(i, r, box) {
+  const s = Math.min(box.w / r.w, box.h / r.h), cx = i * PITCH + r.x + r.w / 2;
+  return { s, tx: box.x + box.w / 2 - cx * s, ty: box.y + (box.h - r.h * s) / 2 - r.y * s };
+}
+function playView(i) {
+  if (mobileLayout()) {
+    const top = Math.max(8, parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sat')) || 0) + 52;
+    const v = fitView(i, PLAY_MOBILE, { x: 4, y: top, w: innerWidth - 8, h: innerHeight - top - 10 });
+    v.ty = Math.min(v.ty, top - PLAY_MOBILE.y * v.s + 10);   // pin the screen just under the back button
+    return v;
+  }
+  // desktop: the bezel nearly fills the view, with room underneath for the controls
+  const legendH = 96;
+  return fitView(i, BEZEL, { x: 0, y: 12, w: innerWidth, h: innerHeight - 24 - legendH });
+}
+function apply(v, how) {
+  world.classList.toggle('anim', how === 'anim'); world.classList.toggle('glide', how === 'glide');
+  world.style.transform = `translate(${v.tx}px,${v.ty}px) scale(${v.s})`;
+  cur = v;
+}
+function select(i, how = 'glide') {
+  sel = Math.max(0, Math.min(cabs.length - 1, i));
+  cabs.forEach((c, k) => c.classList.toggle('sel', k === sel));
+  camX = sel * PITCH + CAB_W / 2;
+  apply(hallView(camX), how);
+}
+
+/* ---------- playing a machine ---------- */
+let leaveTimer = 0;
+function play(i) {
+  if (mode !== 'hall') return;
+  if (i !== sel) { select(i); return; }
+  mode = 'zooming'; document.body.classList.add('zoomed');
+  cabs[i].classList.add('active');
+  apply(playView(i), 'anim');
+  clearTimeout(leaveTimer);
+  leaveTimer = setTimeout(() => { if (mode === 'zooming') { mode = 'playing'; mountGame(); } }, 880);
+}
+function mountGame() {
+  const m = MACHINES[sel];
+  placeOverlays();
+  if (m.src) {
+    frame.hidden = false; frame.src = m.src;
+    frame.onload = () => { frame.classList.add('show'); if (!mobileLayout()) focusGame(); };
+  }
+  if (!mobileLayout()) {
+    const rows = (m.legend || [['Esc', 'Back to the arcade']]).map(([k, d]) => `<span>${k.split(' / ').map(x => `<kbd>${x}</kbd>`).join(' / ')} ${d}</span>`);
+    legend.innerHTML = rows.join(''); requestAnimationFrame(() => legend.classList.add('show'));
+  }
+}
+function focusGame() { try { frame.focus(); frame.contentWindow.focus(); } catch (e) { } }
+// keep the game iframe and the legend glued to the cabinet screen
+function placeOverlays() {
+  if (!cur) return;
+  const s = cur.s, x = cur.tx + (sel * PITCH + SCREEN.x) * s, y = cur.ty + SCREEN.y * s;
+  Object.assign(frame.style, { left: x + 'px', top: y + 'px', width: SCREEN.w * s + 'px', height: SCREEN.h * s + 'px' });
+  const bezelBottom = cur.ty + (BEZEL.y + BEZEL.h) * s;
+  legend.style.top = Math.min(innerHeight - 70, bezelBottom + 12) + 'px';
+}
+function leave() {
+  if (mode !== 'playing' && mode !== 'zooming') return;
+  releaseAll();
+  mode = 'leaving';
+  frame.classList.remove('show'); legend.classList.remove('show');
+  frame.src = 'about:blank'; frame.hidden = true;
+  cabs.forEach(c => c.classList.remove('active'));
+  document.body.classList.remove('zoomed');
+  apply(hallView(camX), 'anim');
+  clearTimeout(leaveTimer);
+  leaveTimer = setTimeout(() => { mode = 'hall'; room.focus(); }, 860);
+}
+$('#back').addEventListener('click', leave);
+
+/* ---------- talking to the game ---------- */
+const send = msg => { if (mode === 'playing' && MACHINES[sel].src && frame.contentWindow) frame.contentWindow.postMessage(msg, '*'); };
+const held = new Set();
+function key(code, down) {
+  if (down === held.has(code)) return;
+  down ? held.add(code) : held.delete(code);
+  send({ type: 'hh-key', code, down });
+}
+function releaseAll() { for (const c of [...held]) key(c, false); send({ type: 'hh-release' }); }
+addEventListener('message', e => {
+  if (e.source !== frame.contentWindow || !e.data || typeof e.data !== 'object') return;
+  if (e.data.type === 'hh-exit') leave();
+});
+
+// joystick
+for (const stick of document.querySelectorAll('.stick')) {
+  const knob = stick.querySelector('.knob'); let pid = null;
+  const move = e => {
+    const r = stick.getBoundingClientRect(), s = r.width / 92;
+    let dx = (e.clientX - (r.left + r.width / 2)) / s, dy = (e.clientY - (r.top + r.height / 2)) / s;
+    const d = Math.hypot(dx, dy), max = 26; if (d > max) { dx *= max / d; dy *= max / d; }
+    knob.style.transform = `translate(${dx}px,${dy}px)`;
+    const t = 11;
+    key('ArrowLeft', dx < -t); key('ArrowRight', dx > t); key('ArrowUp', dy < -t); key('ArrowDown', dy > t);
+  };
+  stick.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); pid = e.pointerId; try { stick.setPointerCapture(pid); } catch (err) { } move(e); });
+  stick.addEventListener('pointermove', e => { if (e.pointerId === pid) move(e); });
+  const end = e => { if (e.pointerId !== pid) return; pid = null; knob.style.transform = ''; for (const c of ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown']) key(c, false); };
+  stick.addEventListener('pointerup', end); stick.addEventListener('pointercancel', end);
+}
+// buttons
+for (const b of document.querySelectorAll('.pb')) {
+  const code = b.dataset.code;
+  b.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); try { b.setPointerCapture(e.pointerId); } catch (err) { } b.classList.add('on'); key(code, true); });
+  const up = () => { b.classList.remove('on'); key(code, false); };
+  b.addEventListener('pointerup', up); b.addEventListener('pointercancel', up); b.addEventListener('lostpointercapture', up);
+}
+for (const b of document.querySelectorAll('.start')) {
+  b.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); b.classList.add('on'); send({ type: 'hh-start' }); });
+  const up = () => b.classList.remove('on'); b.addEventListener('pointerup', up); b.addEventListener('pointercancel', up);
+}
+
+/* ---------- browsing: drag, swipe, wheel, keys ---------- */
+let drag = null;
+room.addEventListener('pointerdown', e => {
+  if (mode !== 'hall' || e.button > 0) return;
+  drag = { id: e.pointerId, x0: e.clientX, x: e.clientX, cam0: camX, moved: false, t: performance.now(), v: 0 };
+  try { room.setPointerCapture(e.pointerId); } catch (err) { }
+});
+room.addEventListener('pointermove', e => {
+  if (!drag || e.pointerId !== drag.id) return;
+  const now = performance.now(), dx = e.clientX - drag.x;
+  drag.v = 0.8 * drag.v + 0.2 * (dx / Math.max(1, now - drag.t)); drag.t = now; drag.x = e.clientX;
+  if (Math.abs(e.clientX - drag.x0) > 6) { drag.moved = true; room.classList.add('dragging'); }
+  if (drag.moved) {
+    const s = hallView(camX).s;
+    camX = Math.max(CAB_W / 2 - PITCH * 0.4, Math.min((cabs.length - 1) * PITCH + CAB_W / 2 + PITCH * 0.4, drag.cam0 - (e.clientX - drag.x0) / s));
+    apply(hallView(camX), 'none');
+    const near = Math.round((camX - CAB_W / 2) / PITCH);
+    cabs.forEach((c, k) => c.classList.toggle('sel', k === near));
+  }
+});
+const endDrag = e => {
+  if (!drag || e.pointerId !== drag.id) return;
+  room.classList.remove('dragging');
+  if (drag.moved) {
+    const s = hallView(camX).s, fling = Math.max(-PITCH * 1.4, Math.min(PITCH * 1.4, -drag.v * 220 / s));   // swipe momentum, at most a machine or so
+    select(Math.round((camX + fling - CAB_W / 2) / PITCH));
+  } else {
+    const c = document.elementFromPoint(e.clientX, e.clientY)?.closest('.cab');
+    if (c) play(cabs.indexOf(c));
+  }
+  drag = null;
+};
+room.addEventListener('pointerup', endDrag); room.addEventListener('pointercancel', endDrag);
+let wheelT = 0;
+room.addEventListener('wheel', e => {
+  if (mode !== 'hall') return;
+  const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+  if (Math.abs(d) < 8 || performance.now() - wheelT < 260) return;
+  wheelT = performance.now(); select(sel + Math.sign(d));
+}, { passive: true });
+$('#arrows .l').addEventListener('click', () => select(sel - 1));
+$('#arrows .r').addEventListener('click', () => select(sel + 1));
+
+addEventListener('keydown', e => {
+  if (mode === 'hall') {
+    if (e.code === 'ArrowLeft' || e.code === 'KeyA') { select(sel - 1); e.preventDefault(); }
+    else if (e.code === 'ArrowRight' || e.code === 'KeyD') { select(sel + 1); e.preventDefault(); }
+    else if (e.code === 'Enter' || e.code === 'Space') { play(sel); e.preventDefault(); }
+  } else if (mode === 'playing') {
+    // the page has focus (e.g. after clicking a bezel): Esc leaves, everything else goes to the game
+    if (e.code === 'Escape' && !MACHINES[sel].src) { leave(); return; }
+    if (e.code === 'Escape' && !held.size) { send({ type: 'hh-key', code: 'Escape', down: true }); send({ type: 'hh-key', code: 'Escape', down: false }); focusGame(); return; }
+    if (e.code.startsWith('Arrow') || e.code === 'Space') e.preventDefault();
+    if (!e.repeat) key(e.code, true);
+  }
+});
+addEventListener('keyup', e => { if (mode === 'playing') key(e.code, false); });
+addEventListener('blur', () => { if (document.activeElement !== frame) releaseAll(); });
+
+function setHint() {
+  hint.innerHTML = isTouch()
+    ? 'Swipe to browse · tap a machine to play'
+    : '<kbd>←</kbd><kbd>→</kbd> choose · <kbd>Enter</kbd> play · drag to browse';
+}
+addEventListener('resize', () => {
+  setHint();
+  if (mode === 'hall') apply(hallView(camX), 'none');
+  else if (mode === 'playing' || mode === 'zooming') { apply(playView(sel), 'none'); placeOverlays(); }
+});
+room.tabIndex = -1;
+setHint();
+select(sel, 'none');
+</script>
+</body>
+</html>

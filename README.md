@@ -1,8 +1,22 @@
 # Internet-Arcade
 
+Open `index.html` in a browser to walk into the arcade. Everything runs from the files in this repo, with no build step and no server needed. To publish it, GitHub Pages serving the repo root works as is.
+
+## The arcade
+
+The page starts zoomed out on a row of cabinets.
+
+- Browse with ← → (or A D), the on-screen arrows, the mouse wheel, by dragging with the mouse, or by swiping on a touch screen.
+- Press Enter or click/tap a machine to play it. Clicking a machine that isn't selected selects it first.
+- On a computer the camera zooms almost all the way into the cabinet, keeping the bezel on both sides of the screen, and the game's keyboard controls fade in underneath. Keys go straight to the game.
+- On a phone the camera frames the screen and the control panel. The joystick, the four buttons and START on the cabinet are live and drive the game.
+- ◀ ARCADE (top left) goes back to the room. In Hill Hop 64, Esc on the title screen does the same.
+
+To add a machine, add an entry to `MACHINES` near the top of the script in `index.html`. Give it a `title`, two colours and a `src`. A game controlled by the cabinet's joystick and buttons needs to listen for the `hh-key` / `hh-start` / `hh-release` messages the way `HillHop64.html` does (search it for `EMBED`). Machines without a `src` show a "Coming soon" screen.
+
 ## Hill Hop 64
 
-An arcade motocross game in one file: open `HillHop64.html` in a browser. It works offline, because three.js (r160, MIT) is inlined.
+An arcade motocross game in one file. Play it from the arcade, or open `HillHop64.html` on its own. It works offline, because three.js (r160, MIT) is inlined.
 
 ### Modes
 
@@ -22,7 +36,7 @@ Free-Ride: Hill Hop has no clock and no rivals. It's a 1.2 km open map with Hill
 | Pre-load | Space | Y, LB |
 | Camera / reset / pause | C / R / Esc | Start |
 
-Touch buttons appear on touch screens.
+Touch buttons appear on touch screens when the game is opened on its own; inside the arcade the cabinet's buttons take over.
 
 ### How it plays
 
