@@ -1,7 +1,7 @@
 import sys, os
 d = os.path.dirname(os.path.abspath(__file__))
 GAMES = {'star-rampart': ('StarRampart.html', 'Star Rampart'), 'brick-blitz': ('BrickBlitz.html', 'Brick Blitz'),
-         'neon-hockey': ('NeonPongHockey.html', 'Neon Pong Hockey'), 'skyline-skater': ('SkylineSkater.html', 'Skyline Skater'),
+         'street-legends': ('StreetLegends.html', 'Street Legends'), 'skyline-skater': ('SkylineSkater.html', 'Skyline Skater'),
          'turbo-tanks': ('TurboTanks.html', 'Turbo Tanks')}
 out_dir = sys.argv[1]
 head = open(os.path.join(d, 'head.html')).read(); kit = open(os.path.join(d, 'kit.js')).read()

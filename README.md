@@ -22,7 +22,7 @@ To add a machine, add an entry to `MACHINES` near the top of the script in `inde
 | Star Rampart | `StarRampart.html` | Formation space shooter. Waves fly in and dive; bosses can capture your fighter with a tractor beam, and shooting the boss while it dives wins it back as a double ship. Every fourth stage is a challenge stage. |
 | Hill Hop 64 | `HillHop64.html` | 3D arcade motocross (details below). |
 | Brick Blitz | `BrickBlitz.html` | Breakout with tough, explosive and unbreakable bricks, sliding rows, six power-ups and a boss every sixth round. Mouse or keys move the paddle. |
-| Neon Pong Hockey | `NeonPongHockey.html` | Air hockey against the CPU (three levels) or a friend on the same keyboard, gamepad or touch screen (one finger per half). |
+| Street Legends | `StreetLegends.html` | One-on-one street fighter with four original fighters (Kaito, Mei, Brick, Vex), each with motion-input specials and a super, plus a shadow boss. Five stages: a mountain dojo, a neon avenue, a rainy back alley, sunset harbor docks and a subway platform. Arcade ladder against the CPU (three levels) and two-player versus. |
 | Skyline Skater | `SkylineSkater.html` | Rooftop skate runner: ollie gaps, grind rails, chain kickflips, grabs and 360s into combos. |
 | Turbo Tanks | `TurboTanks.html` | Arena tank battle with ricochet shells, breakable walls, mines, a turbo dash and five enemy types. |
 
