@@ -140,7 +140,7 @@ class Controller {
       x = Kit.axisX(); y = -Kit.axisY(); x = Math.abs(x) > 0.4 ? Math.sign(x) : 0; y = Math.abs(y) > 0.4 ? Math.sign(y) : 0;
       b = { lp: Kit.held('a'), hp: Kit.held('b'), lk: Kit.held('c'), hk: Kit.held('d'), sp: Kit.held('e'), su: Kit.held('f') };
     } else {
-      const p2 = this.kind === 'p2', pad = (navigator.getGamepads ? navigator.getGamepads() : [])[p2 ? 1 : 0];
+      const p2 = this.kind === 'p2', pad = safePads()[p2 ? 1 : 0];
       if (p2) { x = (k('ArrowRight') ? 1 : 0) - (k('ArrowLeft') ? 1 : 0); y = (k('ArrowUp') ? 1 : 0) - (k('ArrowDown') ? 1 : 0); b = { lp: k('KeyJ'), hp: k('KeyK'), lk: k('KeyL'), hk: k('KeyI'), sp: k('KeyU'), su: k('KeyO') }; }
       else { x = (k('KeyD') ? 1 : 0) - (k('KeyA') ? 1 : 0); y = (k('KeyW') ? 1 : 0) - (k('KeyS') ? 1 : 0); b = { lp: k('KeyF'), hp: k('KeyG'), lk: k('KeyR'), hk: k('KeyT'), sp: k('KeyH'), su: k('KeyY') }; }
       if (pad) {

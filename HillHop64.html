@@ -2103,7 +2103,7 @@ const Input = {
     let gas = k('KeyJ') || k('KeyZ') || t.gas, brake = k('KeyK') || k('KeyX') || t.brake;
     let boost = k('KeyL') || k('ShiftLeft') || k('ShiftRight') || t.boost, jump = k('Space') || t.jump;
     let padSteer = 0, padLean = 0;
-    const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+    let pads = []; try { pads = (navigator.getGamepads && navigator.getGamepads()) || []; } catch (e) { }   // may be blocked inside an iframe
     for (const p of pads) {
       if (!p) continue;
       const ax = Math.abs(p.axes[0]) > 0.18 ? p.axes[0] : 0, ay = Math.abs(p.axes[1]) > 0.25 ? p.axes[1] : 0;
@@ -2670,7 +2670,7 @@ const Touch = {
 /* ---------- running inside an Internet Arcade cabinet ---------- */
 // The cabinet page sends its joystick, buttons and keyboard as messages.
 const EMBED = /[?&]embed=1\b/.test(location.search) && window.parent !== window;
-if (EMBED) document.documentElement.classList.add('embed');
+if (EMBED) { document.documentElement.classList.add('embed'); parent.postMessage({ type: 'hh-ready' }, '*'); }
 addEventListener('message', e => {
   if (!EMBED || e.source !== window.parent) return;
   const d = e.data; if (!d || typeof d !== 'object') return;

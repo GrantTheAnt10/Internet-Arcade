@@ -11,6 +11,9 @@ const rand = (a, b) => a + (b - a) * Math.random();
 const randi = (a, b) => Math.floor(rand(a, b + 1));
 const pick = arr => arr[Math.floor(Math.random() * arr.length)];
 
+// gamepads may be blocked (e.g. inside an iframe opened from file://); that must never stop a game
+function safePads() { try { return (navigator.getGamepads && navigator.getGamepads()) || []; } catch (e) { return []; } }
+
 const Kit = {
   W: 480, H: 360, scale: 1, ox: 0, oy: 0, t: 0,
   embed: /[?&]embed=1\b/.test(location.search) && window.parent !== window,
@@ -27,7 +30,7 @@ const Kit = {
     const c = this.canvas = document.createElement('canvas');
     c.id = 'screen'; document.body.appendChild(c);
     this.ctx = c.getContext('2d');
-    if (this.embed) document.documentElement.classList.add('embed');
+    if (this.embed) { document.documentElement.classList.add('embed'); parent.postMessage({ type: 'hh-ready' }, '*'); }
     addEventListener('resize', () => this.resize()); this.resize();
     addEventListener('keydown', e => {
       if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
@@ -76,7 +79,7 @@ const Kit = {
   axisX() { return this.stick.x || ((this.held('right') ? 1 : 0) - (this.held('left') ? 1 : 0)); },
   axisY() { return this.stick.y || ((this.held('down') ? 1 : 0) - (this.held('up') ? 1 : 0)); },
   pollPad() {
-    const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+    const pads = safePads();
     const P = this.pad; for (const k in P) P[k] = false; this.stick.x = this.stick.y = 0;
     for (const p of pads) {
       if (!p) continue;

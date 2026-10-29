@@ -13,7 +13,11 @@ The page starts zoomed out on a row of cabinets.
 - On a phone the camera frames the screen and the control panel. The joystick, the four buttons and START on the cabinet are live and drive the game.
 - ◀ ARCADE (top left) goes back to the room. In Hill Hop 64, Esc on the title screen does the same.
 
-To add a machine, add an entry to `MACHINES` near the top of the script in `index.html`. Give it a `title`, two colours and a `src`. A game controlled by the cabinet's joystick and buttons needs to listen for the `hh-key` / `hh-start` / `hh-release` messages the way `HillHop64.html` does (search it for `EMBED`). Machines without a `src` show a "Coming soon" screen.
+If a game's file is missing from the folder, its cabinet shows a sad robot on a green screen ("NO GAME FOUND") instead of the game. Served from a web server, the arcade checks every file when it loads. Opened as plain files (including in the iOS app), it finds out when you try to play, because every game says hello to the arcade as soon as it starts.
+
+While a game is running, the arcade freezes its own animations and hides the other cabinets, glows and effects, keeping only the bezel. That way the game inside the cabinet runs about as fast as it does on its own.
+
+To add a machine, add an entry to `MACHINES` near the top of the script in `index.html`. Give it a `title`, two colours and a `src`. A game controlled by the cabinet's joystick and buttons needs to post `hh-ready` to its parent when it starts, and listen for the `hh-key` / `hh-start` / `hh-release` messages. `src/games/kit.js` does all of that for you. Machines without a `src` show a "Coming soon" screen.
 
 ## The games
 

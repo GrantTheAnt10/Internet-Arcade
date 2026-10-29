@@ -28,6 +28,9 @@ const rand = (a, b) => a + (b - a) * Math.random();
 const randi = (a, b) => Math.floor(rand(a, b + 1));
 const pick = arr => arr[Math.floor(Math.random() * arr.length)];
 
+// gamepads may be blocked (e.g. inside an iframe opened from file://); that must never stop a game
+function safePads() { try { return (navigator.getGamepads && navigator.getGamepads()) || []; } catch (e) { return []; } }
+
 const Kit = {
   W: 480, H: 360, scale: 1, ox: 0, oy: 0, t: 0,
   embed: /[?&]embed=1\b/.test(location.search) && window.parent !== window,
@@ -44,7 +47,7 @@ const Kit = {
     const c = this.canvas = document.createElement('canvas');
     c.id = 'screen'; document.body.appendChild(c);
     this.ctx = c.getContext('2d');
-    if (this.embed) document.documentElement.classList.add('embed');
+    if (this.embed) { document.documentElement.classList.add('embed'); parent.postMessage({ type: 'hh-ready' }, '*'); }
     addEventListener('resize', () => this.resize()); this.resize();
     addEventListener('keydown', e => {
       if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
@@ -93,7 +96,7 @@ const Kit = {
   axisX() { return this.stick.x || ((this.held('right') ? 1 : 0) - (this.held('left') ? 1 : 0)); },
   axisY() { return this.stick.y || ((this.held('down') ? 1 : 0) - (this.held('up') ? 1 : 0)); },
   pollPad() {
-    const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+    const pads = safePads();
     const P = this.pad; for (const k in P) P[k] = false; this.stick.x = this.stick.y = 0;
     for (const p of pads) {
       if (!p) continue;
@@ -355,7 +358,7 @@ class Controller {
       x = Kit.axisX(); y = -Kit.axisY(); x = Math.abs(x) > 0.4 ? Math.sign(x) : 0; y = Math.abs(y) > 0.4 ? Math.sign(y) : 0;
       b = { lp: Kit.held('a'), hp: Kit.held('b'), lk: Kit.held('c'), hk: Kit.held('d'), sp: Kit.held('e'), su: Kit.held('f') };
     } else {
-      const p2 = this.kind === 'p2', pad = (navigator.getGamepads ? navigator.getGamepads() : [])[p2 ? 1 : 0];
+      const p2 = this.kind === 'p2', pad = safePads()[p2 ? 1 : 0];
       if (p2) { x = (k('ArrowRight') ? 1 : 0) - (k('ArrowLeft') ? 1 : 0); y = (k('ArrowUp') ? 1 : 0) - (k('ArrowDown') ? 1 : 0); b = { lp: k('KeyJ'), hp: k('KeyK'), lk: k('KeyL'), hk: k('KeyI'), sp: k('KeyU'), su: k('KeyO') }; }
       else { x = (k('KeyD') ? 1 : 0) - (k('KeyA') ? 1 : 0); y = (k('KeyW') ? 1 : 0) - (k('KeyS') ? 1 : 0); b = { lp: k('KeyF'), hp: k('KeyG'), lk: k('KeyR'), hk: k('KeyT'), sp: k('KeyH'), su: k('KeyY') }; }
       if (pad) {
