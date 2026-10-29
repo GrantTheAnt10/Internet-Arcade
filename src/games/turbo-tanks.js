@@ -297,25 +297,40 @@ function update(dt) {
 }
 
 /* ---------- draw ---------- */
+// Light comes from the top-left of the arena and stays put as tanks turn, so shading is
+// worked out in world space and turned into each part's local (rotated) coordinates.
+const LIGHT = { x: -0.7071, y: -0.7071 };        // direction toward the light
+const toLocal = (wx, wy, a) => [wx * Math.cos(a) + wy * Math.sin(a), -wx * Math.sin(a) + wy * Math.cos(a)];
 function drawTank(g, t) {
   if (t.dead) return;
   if (t.inv > 0 && Math.floor(t.inv * 10) % 2 === 0 && t.kind === 'player') g.globalAlpha = 0.5;
+  const big = t.T.big ? 1.15 : 1, a = t.ang;
+  // drop shadow: the real hull outline, offset away from the light
+  g.save(); g.translate(t.x - LIGHT.x * 2.5, t.y - LIGHT.y * 2.5); g.rotate(a); g.scale(big, big);
+  g.fillStyle = 'rgba(0,0,0,.35)'; g.fillRect(-10.5, -9.5, 21, 19); g.restore();
   g.save(); g.translate(t.x, t.y);
-  g.fillStyle = 'rgba(0,0,0,.35)'; g.fillRect(-9, -7, 20, 16);
-  g.save(); g.rotate(t.ang);
-  const big = t.T.big ? 1.15 : 1; g.scale(big, big);
-  // treads
-  g.fillStyle = '#1a1a1a'; g.fillRect(-10, -9, 20, 5); g.fillRect(-10, 4, 20, 5);
-  g.fillStyle = '#555'; for (let i = 0; i < 5; i++) { const x = -10 + ((i * 4 + t.tread) % 20); g.fillRect(x, -9, 1.5, 5); g.fillRect(x, 4, 1.5, 5); }
-  // hull
-  const hg = g.createLinearGradient(0, -5, 0, 5); hg.addColorStop(0, '#fff'); hg.addColorStop(0.2, t.T.col); hg.addColorStop(1, '#000');
+  g.save(); g.rotate(a); g.scale(big, big);
+  // treads: the tread facing the light is a touch brighter
+  const [lx, ly] = toLocal(LIGHT.x, LIGHT.y, a);   // light direction in hull space
+  for (const side of [-1, 1]) {
+    const y0 = side < 0 ? -9 : 4, lit = clamp(side * ly, -1, 1);
+    g.fillStyle = lit > 0 ? '#2a2a2a' : '#141414'; g.fillRect(-10, y0, 20, 5);
+    g.fillStyle = lit > 0 ? '#6a6a6a' : '#444';
+    for (let i = 0; i < 5; i++) { const x = -10 + ((i * 4 + t.tread) % 20); g.fillRect(x, y0, 1.5, 5); }
+  }
+  // hull: bright on the side facing the light, dark on the far side, whichever way the tank points
+  const hg = g.createLinearGradient(lx * 9, ly * 9, -lx * 9, -ly * 9);
+  hg.addColorStop(0, '#fff'); hg.addColorStop(0.22, t.T.col); hg.addColorStop(0.7, t.T.col); hg.addColorStop(1, '#000');
   g.fillStyle = hg; g.fillRect(-9, -5, 18, 10);
   g.restore();
-  // turret
-  g.rotate(t.tur);
+  // turret: barrel, then a dome lit from the same fixed light
+  g.save(); g.rotate(t.tur);
   g.fillStyle = '#222'; g.fillRect(0, -1.6 * big, 14 * big, 3.2 * big);
-  g.fillStyle = t.T.col; g.beginPath(); g.arc(0, 0, 5.5 * big, 0, TAU); g.fill();
-  g.fillStyle = 'rgba(255,255,255,.4)'; g.beginPath(); g.arc(-1.5, -1.5, 2, 0, TAU); g.fill();
+  g.restore();
+  const r = 5.5 * big, hx = LIGHT.x * r * 0.45, hy = LIGHT.y * r * 0.45;
+  const tg = g.createRadialGradient(hx, hy, 0.5, 0, 0, r);
+  tg.addColorStop(0, '#fff'); tg.addColorStop(0.28, t.T.col); tg.addColorStop(0.78, t.T.col); tg.addColorStop(1, 'rgba(0,0,0,.85)');
+  g.fillStyle = tg; g.beginPath(); g.arc(0, 0, r, 0, TAU); g.fill();
   g.restore(); g.globalAlpha = 1;
   if (t.inv > 0 && t.kind === 'player' && t.inv > 2.6) { g.strokeStyle = '#2fe6ff'; g.lineWidth = 1.5; g.beginPath(); g.arc(t.x, t.y, 14, 0, TAU); g.stroke(); }
   if (t.T.hp > 1 && t.hp < t.T.hp) { g.fillStyle = '#f33'; g.fillRect(t.x - 8, t.y - 15, 16 * t.hp / t.T.hp, 2); }
