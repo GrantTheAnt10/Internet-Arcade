@@ -28,7 +28,7 @@ To add a machine, add an entry to `MACHINES` near the top of the script in `inde
 | Brick Blitz | `BrickBlitz.html` | Breakout with tough, explosive and unbreakable bricks, sliding rows, six power-ups and a boss every sixth round. Mouse or keys move the paddle. |
 | Street Legends | `StreetLegends.html` | One-on-one street fighter with four original fighters (Kaito, Mei, Brick, Vex), each with motion-input specials and a super, plus a shadow boss. Five stages: a mountain dojo, a neon avenue, a rainy back alley, sunset harbor docks and a subway platform. Arcade ladder against the CPU (three levels) and two-player versus. Specials and supers have one-button versions: SPECIAL (alone, or with ↓ or ←) and SUPER when the bar is full; the classic joystick motions still work too. |
 | Skyline Skater | `SkylineSkater.html` | Rooftop skate runner: ollie gaps, grind rails, chain kickflips, grabs and 360s into combos. |
-| Turbo Tanks | `TurboTanks.html` | Arena tank battle with ricochet shells, breakable walls, mines, a turbo dash and five enemy types. |
+| Turbo Tanks | `TurboTanks.html` | Arena tank battle with ricochet shells, breakable walls, mines, a turbo dash and five enemy types. Your tank takes five hits and shows each one: scorch, soot, cracks and smoke, then flames on the last hit. Green W crates repair it. Treads leave tracks that slowly fade. |
 
 Every game also runs on its own: open the file directly. On a touch screen you get on-screen buttons, and high scores are kept in the browser. The five canvas games share a small kit in `src/games/kit.js`. To rebuild them after changing the sources, run:
 

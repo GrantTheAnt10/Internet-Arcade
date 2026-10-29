@@ -63,7 +63,7 @@ const TYPES = {
   miner: { col: '#e8c42a', speed: 60, hp: 1, fire: 3.0, shell: 190, bounce: 1, mines: true, pts: 300 },
 };
 const S = {
-  mode: 'title', level: 0, score: 0, hi: 0, lives: 3, grid: [], bricks: {}, tanks: [], shells: [], mines: [], drops: [], marks: [],
+  mode: 'title', level: 0, score: 0, hi: 0, lives: 3, grid: [], bricks: {}, tanks: [], shells: [], mines: [], drops: [],
   fx: new Particles(), smoke: new Particles(), msg: '', msgT: 0, paused: false, mouse: null, queue: [], spawnT: 0, shake: 0,
 };
 
@@ -93,7 +93,7 @@ function connected(rows) {
 }
 function loadLevel() {
   const rows = S.level < MAPS.length ? MAPS[S.level] : genMap(S.level);
-  S.grid = rows.map(r => [...r]); S.bricks = {}; S.tanks = []; S.shells = []; S.mines = []; S.drops = []; S.marks = []; S.fx.clear(); S.smoke.clear();
+  S.grid = rows.map(r => [...r]); S.bricks = {}; S.tanks = []; S.shells = []; S.mines = []; S.drops = []; resetDecals(); S.fx.clear(); S.smoke.clear();
   S.spawns = [];
   for (let y = 0; y < GH; y++) for (let x = 0; x < GW; x++) {
     const c = S.grid[y][x];
@@ -116,8 +116,8 @@ const at = (px, py) => tile(Math.floor(px / TS), Math.floor((py - OY) / TS));
 
 /* ---------- tanks ---------- */
 function makeTank(kind, tx, ty) {
-  const T = kind === 'player' ? { col: '#2fe6ff', speed: 78, hp: 1, shell: 230, bounce: 1 } : TYPES[kind];
-  return { kind, T, x: tx * TS + TS / 2, y: OY + ty * TS + TS / 2, ang: kind === 'player' ? 0 : Math.PI, tur: Math.PI / 2, hp: T.hp, reload: 1 + Math.random(), tread: 0, path: [], pathT: 0, boost: 0, cool: 0, inv: 0, mineT: 3 + Math.random() * 3, rapid: 0 };
+  const T = kind === 'player' ? { col: '#2fe6ff', speed: 78, hp: 5, shell: 230, bounce: 1 } : TYPES[kind];
+  return { kind, T, seed: Math.random() * 1000, trackAcc: 0, x: tx * TS + TS / 2, y: OY + ty * TS + TS / 2, ang: kind === 'player' ? 0 : Math.PI, tur: Math.PI / 2, hp: T.hp, reload: 1 + Math.random(), tread: 0, path: [], pathT: 0, boost: 0, cool: 0, inv: 0, mineT: 3 + Math.random() * 3, rapid: 0 };
 }
 function canStand(x, y, r = 8) {
   for (const [dx, dy] of [[-r, -r], [r, -r], [-r, r], [r, r], [0, -r], [0, r], [-r, 0], [r, 0]]) if (blocksTank(at(x + dx, y + dy))) return false;
@@ -127,7 +127,9 @@ function moveTank(t, dx, dy) {
   if (dx && canStand(t.x + dx, t.y)) t.x += dx;
   if (dy && canStand(t.x, t.y + dy)) t.y += dy;
   t.tread += Math.hypot(dx, dy);
-  if (Math.random() < Math.hypot(dx, dy) * 0.08) S.marks.push({ x: t.x, y: t.y, a: t.ang, life: 6 });
+  // lay a pair of tread prints every few pixels travelled
+  t.trackAcc += Math.hypot(dx, dy);
+  while (t.trackAcc >= 3) { t.trackAcc -= 3; stampTreads(t); }
 }
 function fire(t) {
   const big = t.T.big, sp = t.T.shell;
@@ -137,29 +139,66 @@ function fire(t) {
   S.smoke.burst(x, y, 5, ['#ccc', '#999'], 40, 0.5, 4);
   Kit.noise(0.12, t.kind === 'player' ? 0.25 : 0.12, big ? 500 : 1100);
 }
+/* ---------- ground decals: tread tracks and scorch marks, faded out slowly ---------- */
+function resetDecals() {
+  if (!S.decal) { S.decal = document.createElement('canvas'); S.decal.width = 960; S.decal.height = 720; S.dctx = S.decal.getContext('2d'); }
+  S.dctx.setTransform(1, 0, 0, 1, 0, 0); S.dctx.clearRect(0, 0, 960, 720); S.dctx.setTransform(2, 0, 0, 2, 0, 0); S.fadeT = 0;
+}
+function stampTreads(t) {
+  const d = S.dctx; if (!d) return;
+  const big = t.T.big ? 1.15 : 1;
+  d.save(); d.translate(t.x, t.y); d.rotate(t.ang); d.scale(big, big);
+  d.fillStyle = 'rgba(16,10,4,.42)';
+  d.fillRect(-1, -9, 1.7, 5); d.fillRect(-1, 4, 1.7, 5);           // one cleat on each tread
+  d.fillStyle = 'rgba(16,10,4,.12)';
+  d.fillRect(-1.5, -9, 3, 5); d.fillRect(-1.5, 4, 3, 5);           // pressed-down dirt around it
+  d.restore();
+}
+function stampScorch(x, y, r) {
+  const d = S.dctx; if (!d) return;
+  const gr = d.createRadialGradient(x, y, 1, x, y, r); gr.addColorStop(0, 'rgba(8,5,2,.75)'); gr.addColorStop(0.6, 'rgba(12,8,4,.4)'); gr.addColorStop(1, 'rgba(12,8,4,0)');
+  d.fillStyle = gr; d.beginPath(); d.arc(x, y, r, 0, TAU); d.fill();
+}
+function fadeDecals(dt) {
+  if (!S.dctx || (S.fadeT += dt) < 0.5) return;
+  S.fadeT = 0; const d = S.dctx;
+  d.save(); d.setTransform(1, 0, 0, 1, 0, 0); d.globalCompositeOperation = 'destination-out'; d.fillStyle = 'rgba(0,0,0,.03)'; d.fillRect(0, 0, 960, 720); d.restore();
+}
 function explodeAt(x, y, r, owner) {
   S.fx.burst(x, y, 40, ['#ffd21f', '#ff6a00', '#fff', '#ff3b3b'], 160, 0.7, 3); S.smoke.burst(x, y, 12, ['#555', '#777'], 50, 1.4, 8);
-  S.marks.push({ x, y, scorch: true, life: 12 }); S.shake = Math.max(S.shake, 0.3); Kit.noise(0.6, 0.45, 400);
+  stampScorch(x, y, 16); S.shake = Math.max(S.shake, 0.3); Kit.noise(0.6, 0.45, 400);
   for (let ty = Math.floor((y - OY - r) / TS); ty <= Math.floor((y - OY + r) / TS); ty++) for (let tx = Math.floor((x - r) / TS); tx <= Math.floor((x + r) / TS); tx++) if (tile(tx, ty) === 'b') breakBrick(tx, ty, 9);
-  for (const t of S.tanks) if (Math.hypot(t.x - x, t.y - y) < r + 8) damage(t, owner);
+  for (const t of S.tanks) if (Math.hypot(t.x - x, t.y - y) < r + 8) damage(t, owner, 2);   // a blast costs two hits of armour
 }
 function breakBrick(tx, ty, n = 1) {
   const k = ty * GW + tx; S.bricks[k] = (S.bricks[k] || 2) - n;
   S.fx.burst(tx * TS + TS / 2, OY + ty * TS + TS / 2, 6, ['#b8562a', '#7a3a1a'], 70, 0.4, 3);
   if (S.bricks[k] <= 0) { S.grid[ty][tx] = '.'; delete S.bricks[k]; }
 }
-function damage(t, by) {
+// how battered a tank looks: 0 = pristine ... 1 = one hit from exploding (on fire)
+function wear(t) { return t.T.hp > 1 ? 1 - (t.hp - 1) / (t.T.hp - 1) : 0; }
+function damage(t, by, n = 1) {
   if (t.dead || t.inv > 0) return;
-  if (--t.hp > 0) { S.fx.burst(t.x, t.y, 10, ['#fff', '#ffd21f'], 90, 0.3); Kit.tone(300, 0.1, 0.12, 'square'); return; }
+  t.hp -= n;
+  if (t.hp > 0) {
+    t.hitT = 0.18; S.fx.burst(t.x, t.y, 16, ['#fff', '#ffd21f', '#ff8a1f'], 120, 0.35);
+    S.smoke.burst(t.x, t.y, 4, ['#555', '#777'], 30, 0.8, 5);
+    Kit.tone(260, 0.12, 0.14, 'square', 0.6); Kit.noise(0.15, 0.25, 2600, 'highpass');
+    if (t.kind === 'player') {
+      t.inv = 0.7; S.shake = Math.max(S.shake, 0.25);
+      if (t.hp === 1) { S.msg = 'ON FIRE!'; S.msgT = 1.4; Kit.noise(0.8, 0.2, 600, 'bandpass'); }
+    }
+    return;
+  }
   t.dead = true;
   S.fx.burst(t.x, t.y, 60, ['#ffd21f', '#ff6a00', '#fff', t.T.col], 200, 0.9, 3.5); S.smoke.burst(t.x, t.y, 16, ['#444', '#666'], 60, 1.6, 9);
-  S.marks.push({ x: t.x, y: t.y, scorch: true, life: 20 }); S.shake = 0.5; Kit.noise(0.9, 0.5, 350); Kit.tone(120, 0.5, 0.15, 'sawtooth', 0.5);
+  stampScorch(t.x, t.y, 20); S.shake = 0.5; Kit.noise(0.9, 0.5, 350); Kit.tone(120, 0.5, 0.15, 'sawtooth', 0.5);
   if (t.kind === 'player') {
     S.lives--; S.deadT = 2;
     if (S.lives <= 0) { S.mode = 'over'; S.overT = 5; S.newHi = Kit.setHi('turbo-tanks', S.score); S.hi = Kit.hi('turbo-tanks'); Kit.jingle([392, 330, 262, 196], 0.2, 'triangle'); }
   } else {
     S.score += t.T.pts;
-    if (Math.random() < 0.22) S.drops.push({ x: t.x, y: t.y, k: pick(['R', 'S', 'B']), life: 10 });
+    if (Math.random() < 0.26) S.drops.push({ x: t.x, y: t.y, k: pick(['R', 'S', 'B', 'W', 'W']), life: 10 });
   }
 }
 
@@ -213,7 +252,7 @@ const wrap = a => { while (a > Math.PI) a -= TAU; while (a < -Math.PI) a += TAU;
 function newGame() { Object.assign(S, { mode: 'play', level: 0, score: 0, lives: 3, paused: false }); loadLevel(); Kit.jingle([262, 330, 392, 523], 0.1, 'square', 0.12); }
 function update(dt) {
   S.fx.update(dt); S.smoke.update(dt); if (S.shake > 0) S.shake -= dt;
-  for (const m of S.marks) m.life -= dt; S.marks = S.marks.filter(m => m.life > 0).slice(-220);
+  fadeDecals(dt);
   if (S.mode === 'title') return;
   if (S.mode === 'over') { if ((S.overT -= dt) <= 0) S.mode = 'title'; return; }
   if (S.paused) return;
@@ -242,7 +281,7 @@ function update(dt) {
     if (Kit.hit('b') && S.mines.filter(m => m.owner === P).length < 2) { S.mines.push({ x: P.x, y: P.y, owner: P, arm: 1.2, life: 10 }); Kit.tone(220, 0.1, 0.1, 'square'); }
     for (const d of S.drops) if (Math.hypot(d.x - P.x, d.y - P.y) < 14) {
       d.life = 0; S.score += 50; Kit.jingle([660, 880, 1100], 0.05);
-      if (d.k === 'R') { P.rapid = 10; S.msg = 'RAPID FIRE'; } else if (d.k === 'S') { P.fast = 10; S.msg = 'SPEED'; } else { P.inv = 6; S.msg = 'SHIELD'; }
+      if (d.k === 'R') { P.rapid = 10; S.msg = 'RAPID FIRE'; } else if (d.k === 'S') { P.fast = 10; S.msg = 'SPEED'; } else if (d.k === 'W') { P.hp = Math.min(P.T.hp, P.hp + 2); S.msg = 'REPAIRED'; } else { P.inv = 6; S.msg = 'SHIELD'; }
       S.msgT = 1.2;
     }
   } else if (S.deadT > 0 && (S.deadT -= dt) <= 0 && S.mode === 'play') {
@@ -256,6 +295,14 @@ function update(dt) {
     if (canStand(t.x, t.y) && Math.hypot(t.x - P.x, t.y - P.y) > 80) { S.tanks.push(t); S.fx.burst(t.x, t.y, 20, ['#fff', t.T.col], 80, 0.5); S.spawnT = 1.6; } else S.queue.unshift(t.kind);
   }
   for (const t of S.tanks) if (t.kind !== 'player' && !t.dead) think(t, dt);
+  for (const t of S.tanks) {
+    if (t.dead) continue; const w = wear(t);
+    if (t.hitT > 0) t.hitT -= dt;
+    const bx = t.x - Math.cos(t.ang) * 6, by = t.y - Math.sin(t.ang) * 6;           // engine deck at the back
+    if (w >= 0.5 && Math.random() < dt * (w >= 0.75 ? 26 : 9)) S.smoke.burst(bx, by, 1, w >= 0.75 ? ['#222', '#333', '#111'] : ['#777', '#999'], 18, 1.6, w >= 0.75 ? 7 : 5);
+    if (w >= 1 && Math.random() < dt * 40) S.fx.burst(bx + rand(-3, 3), by + rand(-3, 3), 1, ['#ffd21f', '#ff8a1f', '#ff3b1f'], 26, 0.45, 2.5, -40);
+    if (w >= 1 && t.kind === 'player' && Math.random() < dt * 3) Kit.noise(0.25, 0.05, 900, 'bandpass');
+  }
   // tanks don't overlap
   for (const a of S.tanks) for (const b of S.tanks) {
     if (a === b || a.dead || b.dead) continue; const dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy);
@@ -322,6 +369,7 @@ function drawTank(g, t) {
   const hg = g.createLinearGradient(lx * 9, ly * 9, -lx * 9, -ly * 9);
   hg.addColorStop(0, '#fff'); hg.addColorStop(0.22, t.T.col); hg.addColorStop(0.7, t.T.col); hg.addColorStop(1, '#000');
   g.fillStyle = hg; g.fillRect(-9, -5, 18, 10);
+  drawWear(g, t);
   g.restore();
   // turret: barrel, then a dome lit from the same fixed light
   g.save(); g.rotate(t.tur);
@@ -331,9 +379,55 @@ function drawTank(g, t) {
   const tg = g.createRadialGradient(hx, hy, 0.5, 0, 0, r);
   tg.addColorStop(0, '#fff'); tg.addColorStop(0.28, t.T.col); tg.addColorStop(0.78, t.T.col); tg.addColorStop(1, 'rgba(0,0,0,.85)');
   g.fillStyle = tg; g.beginPath(); g.arc(0, 0, r, 0, TAU); g.fill();
+  const tw = wear(t);
+  if (tw > 0) {   // the turret gets scorched too
+    g.fillStyle = `rgba(20,10,0,${tw * 0.5})`; g.beginPath(); g.arc(0, 0, r, 0, TAU); g.fill();
+    for (let i = 0; i < Math.round(tw * 3); i++) { const a2 = t.seed + i * 2.4, rr = r * 0.55; g.fillStyle = 'rgba(5,3,0,.8)'; g.beginPath(); g.arc(Math.cos(a2) * rr, Math.sin(a2) * rr, 1.3, 0, TAU); g.fill(); }
+  }
+  if (t.hitT > 0) { g.fillStyle = `rgba(255,255,255,${t.hitT * 3})`; g.beginPath(); g.arc(0, 0, r + 4, 0, TAU); g.fill(); }
   g.restore(); g.globalAlpha = 1;
+  if (wear(t) >= 1) drawFire(g, t);
   if (t.inv > 0 && t.kind === 'player' && t.inv > 2.6) { g.strokeStyle = '#2fe6ff'; g.lineWidth = 1.5; g.beginPath(); g.arc(t.x, t.y, 14, 0, TAU); g.stroke(); }
-  if (t.T.hp > 1 && t.hp < t.T.hp) { g.fillStyle = '#f33'; g.fillRect(t.x - 8, t.y - 15, 16 * t.hp / t.T.hp, 2); }
+  if (t.kind !== 'player' && t.T.hp > 1 && t.hp < t.T.hp) { g.fillStyle = '#f33'; g.fillRect(t.x - 8, t.y - 15, 16 * t.hp / t.T.hp, 2); }
+}
+// dents, scorch, soot and cracks build up on the hull (hull space, before the turret)
+function drawWear(g, t) {
+  const w = wear(t); if (w <= 0) return;
+  const R = n => { const x = Math.sin(t.seed + n * 12.9898) * 43758.5453; return x - Math.floor(x); };
+  // soot darkens the whole hull more with every hit
+  g.fillStyle = `rgba(20,10,0,${w * 0.42})`; g.fillRect(-9, -5, 18, 10);
+  const scorch = Math.round(w * 8);
+  for (let i = 0; i < scorch; i++) {
+    const x = -7 + R(i) * 14, y = -4 + R(i + 9) * 8, r = 2 + R(i + 20) * 2.6;
+    const sg = g.createRadialGradient(x, y, 0.3, x, y, r); sg.addColorStop(0, 'rgba(5,3,0,.9)'); sg.addColorStop(0.6, 'rgba(25,12,2,.55)'); sg.addColorStop(1, 'rgba(25,12,2,0)');
+    g.fillStyle = sg; g.beginPath(); g.ellipse(x, y, r, r * 0.75, R(i + 30) * 3, 0, TAU); g.fill();
+  }
+  // dents and cracks
+  g.strokeStyle = 'rgba(0,0,0,.85)'; g.lineWidth = 1;
+  const cracks = Math.round(w * 5);
+  for (let i = 0; i < cracks; i++) {
+    const x = -6 + R(i + 40) * 12, y = -3 + R(i + 50) * 6;
+    g.beginPath(); g.moveTo(x, y); g.lineTo(x + 2.5 - R(i + 60) * 5, y + 1.5 - R(i + 70) * 3); g.lineTo(x + 3 - R(i + 80) * 6, y + 2.5 - R(i + 90) * 5); g.stroke();
+  }
+  // bare metal scratches where shells glanced off
+  g.strokeStyle = 'rgba(220,230,240,.5)'; g.lineWidth = 0.5;
+  for (let i = 0; i < Math.round(w * 3); i++) { const x = -7 + R(i + 100) * 14, y = -4 + R(i + 110) * 8; g.beginPath(); g.moveTo(x, y); g.lineTo(x + 3, y + 1); g.stroke(); }
+}
+// last stage: flames licking off the engine deck, with a flickering glow
+function drawFire(g, t) {
+  const bx = t.x - Math.cos(t.ang) * 6, by = t.y - Math.sin(t.ang) * 6, k = Kit.t * 18 + t.seed;
+  g.save(); g.globalCompositeOperation = 'lighter';
+  const glow = g.createRadialGradient(bx, by, 1, bx, by, 22 + Math.sin(k) * 3);
+  glow.addColorStop(0, 'rgba(255,150,40,.45)'); glow.addColorStop(1, 'rgba(255,80,0,0)');
+  g.fillStyle = glow; g.beginPath(); g.arc(bx, by, 26, 0, TAU); g.fill();
+  for (let i = 0; i < 5; i++) {
+    const ox = Math.sin(k * 0.7 + i * 2.1) * 3.5, oy = Math.cos(k * 0.9 + i * 1.7) * 2.5, h = 6 + Math.abs(Math.sin(k + i)) * 6, w = 2.4 + (i % 2);
+    const fx = bx + ox, fy = by + oy;
+    const fg = g.createLinearGradient(fx, fy + 2, fx, fy - h);
+    fg.addColorStop(0, 'rgba(255,240,170,.95)'); fg.addColorStop(0.4, 'rgba(255,150,30,.85)'); fg.addColorStop(1, 'rgba(255,40,0,0)');
+    g.fillStyle = fg; g.beginPath(); g.moveTo(fx - w, fy + 1.5); g.quadraticCurveTo(fx - w * 0.6, fy - h * 0.6, fx + Math.sin(k + i) * 1.5, fy - h); g.quadraticCurveTo(fx + w * 0.6, fy - h * 0.6, fx + w, fy + 1.5); g.closePath(); g.fill();
+  }
+  g.restore();
 }
 function render() {
   const g = Kit.begin('#2a2418');
@@ -341,12 +435,7 @@ function render() {
   // floor
   for (let y = 0; y < GH; y++) for (let x = 0; x < GW; x++) { g.fillStyle = (x + y) % 2 ? '#3a3226' : '#363023'; g.fillRect(x * TS, OY + y * TS, TS, TS); }
   if (S.mode === 'title') { drawTitle(g); Kit.end(); return; }
-  for (const m of S.marks) {
-    g.globalAlpha = Math.min(1, m.life / 3) * (m.scorch ? 0.55 : 0.25);
-    if (m.scorch) { g.fillStyle = '#0d0a06'; g.beginPath(); g.arc(m.x, m.y, 12, 0, TAU); g.fill(); }
-    else { g.save(); g.translate(m.x, m.y); g.rotate(m.a); g.fillStyle = '#1a140c'; g.fillRect(-2, -9, 4, 3); g.fillRect(-2, 6, 4, 3); g.restore(); }
-  }
-  g.globalAlpha = 1;
+  if (S.decal) g.drawImage(S.decal, 0, 0, 480, 360);
   // walls
   for (let y = 0; y < GH; y++) for (let x = 0; x < GW; x++) {
     const c = S.grid[y][x], px = x * TS, py = OY + y * TS;
@@ -366,7 +455,7 @@ function render() {
     }
   }
   for (const m of S.mines) { g.fillStyle = m.arm > 0 ? '#555' : (Kit.blink(3) ? '#ff3b3b' : '#600'); g.beginPath(); g.arc(m.x, m.y, 4.5, 0, TAU); g.fill(); g.strokeStyle = '#ffd21f'; g.lineWidth = 1; g.stroke(); }
-  for (const d of S.drops) { if (d.life < 3 && Kit.blink(4)) continue; g.fillStyle = { R: '#ff3b3b', S: '#2fe6ff', B: '#ffd21f' }[d.k]; g.beginPath(); g.roundRect(d.x - 7, d.y - 7, 14, 14, 3); g.fill(); Kit.text(d.k, d.x, d.y + 0.5, 9, '#000', 'center', { stroke: false, italic: false }); }
+  for (const d of S.drops) { if (d.life < 3 && Kit.blink(4)) continue; g.fillStyle = { R: '#ff3b3b', S: '#2fe6ff', B: '#ffd21f', W: '#3bff4a' }[d.k]; g.beginPath(); g.roundRect(d.x - 7, d.y - 7, 14, 14, 3); g.fill(); Kit.text(d.k, d.x, d.y + 0.5, 9, '#000', 'center', { stroke: false, italic: false }); }
   for (const t of S.tanks) drawTank(g, t);
   for (const s of S.shells) { g.fillStyle = s.owner.kind === 'player' ? '#fff' : '#ffd21f'; g.beginPath(); g.arc(s.x, s.y, s.r, 0, TAU); g.fill(); g.fillStyle = 'rgba(255,200,80,.35)'; g.beginPath(); g.arc(s.x - s.vx * 0.02, s.y - s.vy * 0.02, s.r * 0.8, 0, TAU); g.fill(); }
   S.smoke.draw(g); S.fx.draw(g);
@@ -374,11 +463,16 @@ function render() {
   // HUD
   g.fillStyle = '#000'; g.fillRect(0, 0, 480, OY);
   Kit.mono('SCORE ' + String(S.score).padStart(6, '0'), 8, 10, 11, '#fff');
-  Kit.mono('ARENA ' + (S.level + 1), 200, 10, 11, '#ffd21f', 'center');
-  Kit.mono('HI ' + String(Math.max(S.hi, S.score)).padStart(6, '0'), 300, 10, 11, '#8a85a8', 'center');
-  for (let i = 0; i < S.lives; i++) { g.fillStyle = '#2fe6ff'; g.fillRect(400 + i * 14, 6, 10, 8); g.fillStyle = '#111'; g.fillRect(405 + i * 14, 9, 7, 2); }
+  Kit.mono('ARENA ' + (S.level + 1), 148, 10, 11, '#ffd21f', 'center');
+  Kit.mono('HI ' + String(Math.max(S.hi, S.score)).padStart(6, '0'), 222, 10, 11, '#8a85a8', 'center');
+  if (S.player) {
+    const P = S.player, hp = P.dead ? 0 : P.hp, cols = ['#ff3b1f', '#ff8a1f', '#ffd21f', '#9aff4a', '#3bff4a'];
+    Kit.mono('ARMOR', 268, 10, 8, '#aaa');
+    for (let i = 0; i < P.T.hp; i++) { g.fillStyle = '#222'; g.fillRect(298 + i * 11, 5, 9, 10); if (i < hp) { g.fillStyle = hp === 1 && Kit.blink(4) ? '#fff' : cols[hp - 1]; g.fillRect(299 + i * 11, 6, 7, 8); } }
+  }
+  for (let i = 0; i < S.lives; i++) { g.fillStyle = '#2fe6ff'; g.fillRect(402 + i * 13, 6, 10, 8); g.fillStyle = '#111'; g.fillRect(407 + i * 13, 9, 7, 2); }
   const left = S.queue.length + S.tanks.filter(t => t.kind !== 'player' && !t.dead).length; Kit.mono('×' + left, 474, 10, 11, '#ff3b3b', 'right');
-  if (S.player && S.player.cool > 0) { g.fillStyle = '#333'; g.fillRect(360, 7, 30, 6); g.fillStyle = '#2fe6ff'; g.fillRect(360, 7, 30 * (1 - S.player.cool / 2.5), 6); }
+  if (S.player && S.player.cool > 0) { g.fillStyle = '#333'; g.fillRect(358, 7, 38, 6); g.fillStyle = '#2fe6ff'; g.fillRect(358, 7, 38 * (1 - S.player.cool / 2.5), 6); }
   if (S.msgT > 0) Kit.text(S.msg, 240, 190, 26, '#ffd21f', 'center', { glow: '#000' });
   if (S.paused) { g.fillStyle = 'rgba(0,0,0,.55)'; g.fillRect(0, 0, 480, 360); Kit.text('PAUSED', 240, 180, 30, '#ffd21f'); }
   if (S.mode === 'over') { g.fillStyle = 'rgba(0,0,0,.5)'; g.fillRect(0, 0, 480, 360); Kit.text('GAME OVER', 240, 170, 34, '#ff3b3b'); if (S.newHi) Kit.text('NEW HIGH SCORE!', 240, 206, 16, '#ffd21f'); }
@@ -391,6 +485,7 @@ function drawTitle(g) {
   let i = 0; for (const k in TYPES) { const t = makeTank(k, 0, 0); t.x = 96 + i * 72; t.y = 170; t.ang = -Math.PI / 2 + Math.sin(Kit.t + i) * 0.4; t.tur = t.ang; drawTank(g, t); Kit.mono(k.toUpperCase(), t.x, 192, 8, '#ddd', 'center'); Kit.mono(TYPES[k].pts + '', t.x, 204, 8, '#ffd21f', 'center'); i++; }
   Kit.mono('MOVE: stick / arrows / WASD   FIRE: A · J · Space · click', 240, 232, 9, '#fff', 'center');
   Kit.mono('MINE: B · K     TURBO DASH: C · L     Shells ricochet off steel', 240, 246, 9, '#fff', 'center');
+  Kit.mono('Your tank takes 5 hits · green W crates repair it', 240, 260, 9, '#3bff4a', 'center');
   if (Kit.blink()) Kit.text('PRESS START', 240, 290, 22, '#ffd21f');
   Kit.mono('HI ' + String(S.hi).padStart(6, '0'), 240, 322, 10, '#8a85a8', 'center');
 }
