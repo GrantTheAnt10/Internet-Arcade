@@ -165,7 +165,68 @@ body.zoomed .plate{opacity:0}
   opacity:0;pointer-events:none;transition:opacity .4s}
 body.zoomed #back{opacity:1;pointer-events:auto}
 @media (pointer:coarse){#arrows{display:none}}
-@media (prefers-reduced-motion:reduce){#world.anim,#world.glide{transition-duration:.01s}.att-hillhop .bike,.att-soon::before{animation:none}}
+/* attract screens for the canvas games */
+.attract .att-title small{color:transparent}
+.att-star{background:radial-gradient(circle at 30% 20%,rgba(255,255,255,.9) 0 1px,transparent 1.5px) 0 0/37px 41px,radial-gradient(circle at 70% 60%,rgba(120,220,255,.8) 0 1px,transparent 1.5px) 0 0/53px 47px,#04030c;animation:starfall 6s linear infinite}
+@keyframes starfall{to{background-position:0 82px,0 94px,0 0}}
+.att-star .att-title{background:linear-gradient(180deg,#fff,#2fe6ff);-webkit-background-clip:text;background-clip:text;top:8%}
+.att-star .att-title small{background:linear-gradient(180deg,#ffc0f0,#ff3bd4);-webkit-background-clip:text;background-clip:text}
+.att-star .fleet{position:absolute;left:18%;right:18%;top:44%;display:grid;grid-template-columns:repeat(8,1fr);gap:6px 8px;animation:sway 3s ease-in-out infinite alternate}
+.att-star .fleet i{display:block;height:7px;border-radius:2px;background:#ffd21f;box-shadow:inset 0 -3px 0 #3a7bff}
+.att-star .fleet i:nth-child(-n+8){background:#2ee86b;box-shadow:inset 0 -3px 0 #b04bff}
+.att-star .fleet i:nth-child(n+9):nth-child(-n+16){background:#ff3030;box-shadow:inset 0 -3px 0 #fff}
+@keyframes sway{from{transform:translateX(-14px)}to{transform:translateX(14px)}}
+.att-star .ship{position:absolute;left:50%;bottom:16%;width:16px;height:14px;margin-left:-8px;background:#f4f4f4;clip-path:polygon(50% 0,62% 45%,100% 100%,62% 80%,38% 80%,0 100%,38% 45%);animation:shipmove 3s ease-in-out infinite alternate}
+@keyframes shipmove{from{transform:translateX(-50px)}to{transform:translateX(50px)}}
+.att-star .shot{position:absolute;left:50%;bottom:24%;width:2px;height:8px;background:#fff;animation:shoot .7s linear infinite}
+@keyframes shoot{from{transform:translateY(0);opacity:1}to{transform:translateY(-90px);opacity:0}}
+.att-brick{background:linear-gradient(180deg,#08061a,#1a0a33)}
+.att-brick .att-title{background:linear-gradient(180deg,#fff2b0,#ff8a1f);-webkit-background-clip:text;background-clip:text;top:54%}
+.att-brick .att-title small{background:linear-gradient(180deg,#bff6ff,#3a7bff);-webkit-background-clip:text;background-clip:text}
+.att-brick .wall{position:absolute;left:8%;right:8%;top:10%;display:grid;grid-template-columns:repeat(10,1fr);gap:3px}
+.att-brick .wall i{display:block;height:10px;border-radius:2px;background:linear-gradient(180deg,#fff 0 15%,var(--k) 20% 75%,rgba(0,0,0,.5))}
+.att-brick .wall i:nth-child(-n+10){--k:#ff3b3b}.att-brick .wall i:nth-child(n+11):nth-child(-n+20){--k:#ffd21f}.att-brick .wall i:nth-child(n+21){--k:#2ee86b}
+.att-brick .wall i:nth-child(7),.att-brick .wall i:nth-child(14),.att-brick .wall i:nth-child(23){visibility:hidden}
+.att-brick .ball{position:absolute;width:8px;height:8px;border-radius:50%;background:#fff;box-shadow:0 0 8px #9adfff;animation:bounce 2.2s linear infinite}
+@keyframes bounce{0%{left:20%;top:80%}25%{left:60%;top:30%}50%{left:85%;top:60%}75%{left:45%;top:82%}100%{left:20%;top:80%}}
+.att-brick .paddle{position:absolute;bottom:8%;width:52px;height:8px;border-radius:4px;background:linear-gradient(180deg,#fff,#8ad8ff 40%,#1a3a6a);animation:pad 2.2s linear infinite}
+@keyframes pad{0%,100%{left:14%}50%{left:66%}75%{left:38%}}
+.att-hockey{background:#05040e}
+.att-hockey .rink{position:absolute;inset:10% 6%;border:3px solid #e8e6ff;border-radius:22px;box-shadow:0 0 12px #ff3bd4,inset 0 0 12px #2fe6ff;
+  background:linear-gradient(90deg,transparent calc(50% - 1px),#ff3bd4 calc(50% - 1px) calc(50% + 1px),transparent calc(50% + 1px))}
+.att-hockey .att-title{background:linear-gradient(180deg,#fff,#2fe6ff);-webkit-background-clip:text;background-clip:text;top:20%;font-size:32px}
+.att-hockey .att-title small{background:linear-gradient(180deg,#ffc0f0,#ff3bd4);-webkit-background-clip:text;background-clip:text}
+.att-hockey .puck{position:absolute;width:12px;height:12px;border-radius:50%;border:3px solid #ffd21f;box-shadow:0 0 10px #ffd21f;animation:puck 2.4s ease-in-out infinite}
+@keyframes puck{0%{left:16%;top:68%}50%{left:80%;top:44%}100%{left:16%;top:68%}}
+.att-hockey .mal{position:absolute;width:20px;height:20px;border-radius:50%;top:62%}
+.att-hockey .mal.a{left:9%;background:radial-gradient(circle at 35% 35%,#fff,#2fe6ff 40%,#0a0a20);box-shadow:0 0 12px #2fe6ff;animation:mala 2.4s ease-in-out infinite}
+.att-hockey .mal.b{right:9%;background:radial-gradient(circle at 35% 35%,#fff,#ff3bd4 40%,#0a0a20);box-shadow:0 0 12px #ff3bd4;animation:malb 2.4s ease-in-out infinite}
+@keyframes mala{0%,100%{transform:translate(0,4px)}50%{transform:translate(10px,-10px)}}
+@keyframes malb{0%,100%{transform:translate(0,-14px)}50%{transform:translate(-6px,-24px)}}
+.att-skater{background:linear-gradient(180deg,#05020f,#2a0f4a 55%,#ff3b8a)}
+.att-skater .att-title{background:linear-gradient(180deg,#fff,#2fe6ff);-webkit-background-clip:text;background-clip:text;top:8%}
+.att-skater .att-title small{background:linear-gradient(180deg,#ffc0f0,#ff3bd4);-webkit-background-clip:text;background-clip:text}
+.att-skater .moon{position:absolute;right:12%;top:12%;width:30px;height:30px;border-radius:50%;background:#ffe9c0;box-shadow:0 0 20px #ffd}
+.att-skater .city{position:absolute;left:0;right:0;bottom:26%;height:34%;background:#1a0d33;
+  clip-path:polygon(0 100%,0 40%,8% 40%,8% 15%,16% 15%,16% 50%,24% 50%,24% 5%,32% 5%,32% 35%,42% 35%,42% 20%,52% 20%,52% 55%,60% 55%,60% 10%,70% 10%,70% 45%,80% 45%,80% 25%,90% 25%,90% 50%,100% 50%,100% 100%)}
+.att-skater .roof{position:absolute;left:0;right:0;bottom:0;height:27%;background:#2b2440;border-top:3px solid #4a3f66}
+.att-skater .sk{position:absolute;left:40%;bottom:27%;width:22px;height:30px;animation:ollie 1.6s ease-in-out infinite;
+  background:linear-gradient(#ff3bd4,#ff3bd4) 6px 0/10px 4px no-repeat,radial-gradient(circle,#f0c8a0 0 4px,transparent 4.5px) 10px 6px/10px 10px no-repeat,
+  linear-gradient(#2fe6ff,#2fe6ff) 7px 13px/8px 9px no-repeat,linear-gradient(#1b1b2b,#1b1b2b) 6px 22px/10px 5px no-repeat,linear-gradient(#2a1a10,#2a1a10) 0 27px/22px 3px no-repeat}
+@keyframes ollie{0%,55%,100%{transform:translateY(0) rotate(0)}25%{transform:translateY(-34px) rotate(-12deg)}40%{transform:translateY(-26px) rotate(8deg)}}
+.att-tanks{background:repeating-conic-gradient(#3a3226 0 25%,#363023 0 50%) 0 0/24px 24px}
+.att-tanks .att-title{background:linear-gradient(180deg,#fff2b0,#ffd21f);-webkit-background-clip:text;background-clip:text;top:8%}
+.att-tanks .att-title small{background:linear-gradient(180deg,#ffc0b0,#ff3b3b);-webkit-background-clip:text;background-clip:text}
+.att-tanks .blk{position:absolute;background:linear-gradient(180deg,#9aa2b0,#4a505c);border:1px solid #222}
+.att-tanks .b1{left:42%;top:50%;width:40px;height:40px}.att-tanks .b2{left:12%;top:76%;width:60px;height:14px;background:#a24a22}
+.att-tanks .tank{position:absolute;width:24px;height:18px;border-radius:3px;border-top:4px solid #111;border-bottom:4px solid #111}
+.att-tanks .tank::after{content:"";position:absolute;left:50%;top:50%;width:18px;height:4px;margin-top:-2px;background:#222}
+.att-tanks .t1{left:14%;top:52%;background:#2fe6ff;animation:t1 3s ease-in-out infinite alternate}
+.att-tanks .t2{right:12%;top:58%;background:#a8743a;transform:scaleX(-1);animation:t2 3s ease-in-out infinite alternate}
+@keyframes t1{to{transform:translateY(16px)}} @keyframes t2{to{transform:scaleX(-1) translateY(-20px)}}
+.att-tanks .shell{position:absolute;left:24%;top:56%;width:6px;height:6px;border-radius:50%;background:#fff;box-shadow:0 0 6px #ffd21f;animation:shell 1.5s linear infinite}
+@keyframes shell{0%{transform:translate(0,0)}45%{transform:translate(70px,-34px)}100%{transform:translate(170px,20px);opacity:0}}
+@media (prefers-reduced-motion:reduce){#world.anim,#world.glide{transition-duration:.01s}.attract *,.attract,.att-soon::before{animation:none!important}}
 </style>
 </head>
 <body>
@@ -181,15 +242,41 @@ body.zoomed #back{opacity:1;pointer-events:auto}
 'use strict';
 /* Machines in the room. A machine with `src` is playable; the others show a "coming soon" screen. */
 const MACHINES = [
-  { title: 'COMING SOON', sub: 'Slot 1', c1: '#28d7ff', c2: '#1060ff' },
+  { title: 'STAR RAMPART', sub: 'Formation space shooter', c1: '#2fe6ff', c2: '#ff3bd4', mq: 30, art: 'star', src: 'StarRampart.html?embed=1',
+    legend: [['← →', 'Move'], ['J / Space', 'Fire'], ['Enter', 'Start · pause'], ['Esc', 'Pause · on the title screen, back to the arcade']],
+    buttons: [['FIRE', 'KeyJ', '#ff3030'], ['FIRE', 'KeyK', '#ff3030'], ['FIRE', 'KeyL', '#ffd21f'], ['FIRE', 'KeyI', '#ffd21f']] },
   { title: 'HILL HOP 64', sub: 'Arcade motocross', c1: '#ff6a00', c2: '#ffe14d', art: 'hillhop', src: 'HillHop64.html?embed=1',
     legend: [['← →', 'Steer'], ['↑ ↓', 'Lean / pitch'], ['Space', 'Pre-load jump'], ['L / Shift', 'Turbo'], ['K', 'Brake'], ['J', 'Gas (Auto-gas off)'],
              ['C', 'Camera'], ['R', 'Reset bike'], ['Esc', 'Pause · on the title screen, back to the arcade']],
     buttons: [['GAS', 'KeyJ', '#3bff4a'], ['TURBO', 'KeyL', '#28d7ff'], ['BRAKE', 'KeyK', '#ff3b1f'], ['JUMP', 'Space', '#ffe14d']] },
-  { title: 'COMING SOON', sub: 'Slot 3', c1: '#ff3bd4', c2: '#7a2cff' },
-  { title: 'COMING SOON', sub: 'Slot 4', c1: '#3bff4a', c2: '#18b33a' },
-  { title: 'COMING SOON', sub: 'Slot 5', c1: '#ffe14d', c2: '#ff3b1f' },
+  { title: 'BRICK BLITZ', sub: 'Breakout with power-ups', c1: '#ff8a1f', c2: '#3a7bff', mq: 32, art: 'brick', src: 'BrickBlitz.html?embed=1',
+    legend: [['← →', 'Move paddle (or the mouse)'], ['J / Space', 'Launch · laser'], ['Enter', 'Start · pause'], ['Esc', 'Pause · on the title screen, back to the arcade']],
+    buttons: [['LAUNCH', 'KeyJ', '#3bff4a'], ['LASER', 'KeyK', '#ff3b3b'], ['FIRE', 'KeyL', '#28d7ff'], ['FIRE', 'KeyI', '#ffd21f']] },
+  { title: 'NEON PONG HOCKEY', sub: '1 or 2 players', c1: '#ff3bd4', c2: '#2fe6ff', mq: 23, art: 'hockey', src: 'NeonPongHockey.html?embed=1',
+    legend: [['↑ ↓ ← →', 'Move mallet (1P) · Player 2 (2P)'], ['W A S D', 'Player 1 (2P)'], ['J', 'Smash'], ['Space', 'Smash (P1 in 2P)'], ['Esc', 'Pause · on the title screen, back to the arcade']],
+    buttons: [['SMASH', 'KeyJ', '#ff3bd4'], ['SMASH', 'KeyK', '#2fe6ff'], ['SMASH', 'KeyL', '#ffd21f'], ['SMASH', 'KeyI', '#3bff4a']] },
+  { title: 'SKYLINE SKATER', sub: 'Rooftop skate runner', c1: '#b04bff', c2: '#ff3b8a', mq: 26, art: 'skater', src: 'SkylineSkater.html?embed=1',
+    legend: [['J / Space / ↑', 'Ollie (hold = higher)'], ['K', 'Kickflip'], ['L', 'Grab (hold)'], ['I / ↓', '360 spin'], ['Esc', 'Pause · on the title screen, back to the arcade']],
+    buttons: [['JUMP', 'KeyJ', '#3bff4a'], ['FLIP', 'KeyK', '#ff3bd4'], ['GRAB', 'KeyL', '#28d7ff'], ['SPIN', 'KeyI', '#ffd21f']] },
+  { title: 'TURBO TANKS', sub: 'Arena tank battle', c1: '#ffd21f', c2: '#ff3b3b', mq: 32, art: 'tanks', src: 'TurboTanks.html?embed=1',
+    legend: [['↑ ↓ ← →', 'Drive'], ['J / Space', 'Fire'], ['K', 'Drop mine'], ['L', 'Turbo dash'], ['Esc', 'Pause · on the title screen, back to the arcade']],
+    buttons: [['FIRE', 'KeyJ', '#ff3b3b'], ['MINE', 'KeyK', '#ffd21f'], ['TURBO', 'KeyL', '#28d7ff'], ['FIRE', 'KeyI', '#ff6a00']] },
 ];
+// attract-mode screens shown on each cabinet until you insert a coin
+const ATTRACT = {
+  hillhop: () => `<div class="attract att-hillhop"><div class="sun"></div><div class="mts"></div><div class="hills"></div><div class="bike">🏍️</div>
+      <div class="att-title">HILL HOP<small>64</small></div><div class="press">PRESS START</div></div>`,
+  star: () => `<div class="attract att-star"><div class="fleet">${'<i></i>'.repeat(24)}</div><div class="ship"></div><div class="shot"></div>
+      <div class="att-title">STAR<small>RAMPART</small></div><div class="press">PRESS START</div></div>`,
+  brick: () => `<div class="attract att-brick"><div class="wall">${'<i></i>'.repeat(30)}</div><div class="ball"></div><div class="paddle"></div>
+      <div class="att-title">BRICK<small>BLITZ</small></div><div class="press">PRESS START</div></div>`,
+  hockey: () => `<div class="attract att-hockey"><div class="rink"></div><div class="puck"></div><div class="mal a"></div><div class="mal b"></div>
+      <div class="att-title">NEON PONG<small>HOCKEY</small></div><div class="press">1 OR 2 PLAYERS</div></div>`,
+  skater: () => `<div class="attract att-skater"><div class="moon"></div><div class="city"></div><div class="roof"></div><div class="sk"></div>
+      <div class="att-title">SKYLINE<small>SKATER</small></div><div class="press">PRESS START</div></div>`,
+  tanks: () => `<div class="attract att-tanks"><div class="blk b1"></div><div class="blk b2"></div><div class="tank t1"></div><div class="tank t2"></div><div class="shell"></div>
+      <div class="att-title">TURBO<small>TANKS</small></div><div class="press">PRESS START</div></div>`,
+};
 const DEFAULT_BUTTONS = [['A', 'KeyJ', '#3bff4a'], ['B', 'KeyL', '#28d7ff'], ['C', 'KeyK', '#ff3b1f'], ['D', 'Space', '#ffe14d']];
 
 const CAB_W = 360, CAB_H = 690, GAP = 90, PITCH = CAB_W + GAP;
@@ -208,14 +295,11 @@ const cabs = MACHINES.map((m, i) => {
   const el = document.createElement('div');
   el.className = 'cab'; el.style.left = (i * PITCH) + 'px';
   el.style.setProperty('--c1', m.c1); el.style.setProperty('--c2', m.c2);
-  const att = m.art === 'hillhop'
-    ? `<div class="attract att-hillhop"><div class="sun"></div><div class="mts"></div><div class="hills"></div><div class="bike">🏍️</div>
-        <div class="att-title">HILL HOP<small>64</small></div><div class="press">PRESS START</div></div>`
-    : `<div class="attract att-soon"><div class="att-title">COMING<br>SOON</div><div class="press">NO GAME LOADED</div></div>`;
+  const att = ATTRACT[m.art] ? ATTRACT[m.art]() : `<div class="attract att-soon"><div class="att-title">COMING<br>SOON</div><div class="press">NO GAME LOADED</div></div>`;
   const btns = (m.buttons || DEFAULT_BUTTONS).map(([label, code, col], k) =>
     `<button class="pb" data-code="${code}" style="--b:${col};left:${(k % 2) * 74 + (k > 1 ? 30 : 10)}px;top:${k > 1 ? 76 : 0}px" aria-label="${label}"><i>${label}</i></button>`).join('');
   el.innerHTML = `<div class="floorglow"></div><div class="body"></div><div class="side l"></div><div class="side r"></div>
-    <div class="marquee"><span>${m.title}</span></div>
+    <div class="marquee"><span${m.mq ? ` style="font-size:${m.mq}px"` : ''}>${m.title}</span></div>
     <div class="bezel"><div class="screen">${att}<div class="credit">CREDIT 01</div><div class="glass"></div></div></div>
     <div class="panel"><button class="start" aria-label="Start">START</button><div class="stick" aria-label="Joystick"><div class="knob"></div></div><div class="pbs">${btns}</div></div>
     <div class="coin"><div class="coinlbl">INSERT COIN</div><div class="slots"><i class="slot"><b></b><u>25¢</u></i><i class="slot"><b></b><u>25¢</u></i></div><div class="coinfly">★</div></div>

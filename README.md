@@ -15,6 +15,25 @@ The page starts zoomed out on a row of cabinets.
 
 To add a machine, add an entry to `MACHINES` near the top of the script in `index.html`. Give it a `title`, two colours and a `src`. A game controlled by the cabinet's joystick and buttons needs to listen for the `hh-key` / `hh-start` / `hh-release` messages the way `HillHop64.html` does (search it for `EMBED`). Machines without a `src` show a "Coming soon" screen.
 
+## The games
+
+| Cabinet | File | What it is |
+| --- | --- | --- |
+| Star Rampart | `StarRampart.html` | Formation space shooter. Waves fly in and dive; bosses can capture your fighter with a tractor beam, and shooting the boss while it dives wins it back as a double ship. Every fourth stage is a challenge stage. |
+| Hill Hop 64 | `HillHop64.html` | 3D arcade motocross (details below). |
+| Brick Blitz | `BrickBlitz.html` | Breakout with tough, explosive and unbreakable bricks, sliding rows, six power-ups and a boss every sixth round. Mouse or keys move the paddle. |
+| Neon Pong Hockey | `NeonPongHockey.html` | Air hockey against the CPU (three levels) or a friend on the same keyboard, gamepad or touch screen (one finger per half). |
+| Skyline Skater | `SkylineSkater.html` | Rooftop skate runner: ollie gaps, grind rails, chain kickflips, grabs and 360s into combos. |
+| Turbo Tanks | `TurboTanks.html` | Arena tank battle with ricochet shells, breakable walls, mines, a turbo dash and five enemy types. |
+
+Every game also runs on its own: open the file directly. On a touch screen you get on-screen buttons, and high scores are kept in the browser. The five canvas games share a small kit in `src/games/kit.js`. To rebuild them after changing the sources, run:
+
+```
+python3 src/games/build.py .
+```
+
+That inlines the kit into each game, so every output file stays self-contained.
+
 ## iOS app
 
 The **iOS app** workflow (`.github/workflows/ios.yml`) wraps the arcade in a full-screen iOS web view and builds an `.ipa` on a macOS runner. It runs on every push to `main` that touches the HTML or `ios/`, and you can also start it by hand from the Actions tab. Each run publishes a GitHub Release with the IPA attached. The newest one is always at:
