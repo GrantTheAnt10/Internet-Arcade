@@ -1,0 +1,74 @@
+name: iOS app
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - '*.html'
+      - 'ios/**'
+      - '.github/workflows/ios.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Bundle the arcade and games
+        run: |
+          mkdir -p ios/web
+          cp *.html ios/web/
+          ls -la ios/web
+
+      - name: Generate the Xcode project
+        working-directory: ios
+        run: xcodegen generate
+
+      - name: Build (unsigned)
+        working-directory: ios
+        run: |
+          xcodebuild -project InternetArcade.xcodeproj -target InternetArcade \
+            -configuration Release -sdk iphoneos \
+            CURRENT_PROJECT_VERSION=${{ github.run_number }} \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            SYMROOT="$PWD/build" build | tail -40
+          test -d build/Release-iphoneos/InternetArcade.app
+
+      - name: Package the IPA
+        run: |
+          mkdir -p dist/Payload
+          cp -R ios/build/Release-iphoneos/InternetArcade.app dist/Payload/
+          (cd dist && zip -qry InternetArcade.ipa Payload)
+          ls -la dist/InternetArcade.ipa
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: InternetArcade-ipa
+          path: dist/InternetArcade.ipa
+
+      - name: Publish a release
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ios-build-${{ github.run_number }}
+          name: Internet Arcade for iOS (build ${{ github.run_number }})
+          target_commitish: ${{ github.sha }}
+          make_latest: true
+          files: dist/InternetArcade.ipa
+          body: |
+            Unsigned iOS build of the Internet Arcade (commit ${{ github.sha }}).
+
+            The IPA is not signed, so it has to be installed with a sideloading tool that signs it with your
+            own Apple ID, such as AltStore or Sideloadly (or TrollStore on supported iOS versions).

@@ -15,6 +15,16 @@ The page starts zoomed out on a row of cabinets.
 
 To add a machine, add an entry to `MACHINES` near the top of the script in `index.html`. Give it a `title`, two colours and a `src`. A game controlled by the cabinet's joystick and buttons needs to listen for the `hh-key` / `hh-start` / `hh-release` messages the way `HillHop64.html` does (search it for `EMBED`). Machines without a `src` show a "Coming soon" screen.
 
+## iOS app
+
+The **iOS app** workflow (`.github/workflows/ios.yml`) wraps the arcade in a full-screen iOS web view and builds an `.ipa` on a macOS runner. It runs on every push to `main` that touches the HTML or `ios/`, and you can also start it by hand from the Actions tab. Each run publishes a GitHub Release with the IPA attached. The newest one is always at:
+
+https://github.com/GrantTheAnt10/Internet-Arcade/releases/latest/download/InternetArcade.ipa
+
+The IPA is **unsigned**, because the build has no Apple signing certificate. Install it with a sideloading tool that signs it with your own Apple ID, such as [AltStore](https://altstore.io) or [Sideloadly](https://sideloadly.io). With a free Apple ID the install expires after 7 days and has to be refreshed. To make App Store or TestFlight builds instead, add your signing certificate and provisioning profile as repository secrets and switch the build step to `xcodebuild archive` plus `-exportArchive`.
+
+The Xcode project is generated from `ios/project.yml` with [XcodeGen](https://github.com/yonaskolb/XcodeGen); the Swift wrapper is `ios/InternetArcade/AppDelegate.swift`.
+
 ## Hill Hop 64
 
 An arcade motocross game in one file. Play it from the arcade, or open `HillHop64.html` on its own. It works offline, because three.js (r160, MIT) is inlined.
