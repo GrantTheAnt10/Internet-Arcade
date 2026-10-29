@@ -1,0 +1,463 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Neon Pong Hockey</title>
+<style>
+html,body{margin:0;height:100%;overflow:hidden;background:#000;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent}
+#screen{position:fixed;inset:0;display:block;image-rendering:pixelated}
+#touch{position:fixed;inset:0;pointer-events:none}
+.tbtn{position:absolute;pointer-events:auto;width:56px;height:56px;border-radius:50%;border:3px solid rgba(255,255,255,.75);background:rgba(0,0,0,.35);
+  color:#fff;display:flex;align-items:center;justify-content:center;font:bold 13px Arial,sans-serif}
+.tbtn.on{background:rgba(255,200,0,.5)}
+</style>
+</head>
+<body>
+<script>
+/* =====================================================================
+   ARCADE KIT — shared by the Internet Arcade canvas games.
+   Canvas scaling, keyboard / gamepad / touch / cabinet input, sound,
+   high scores and the cabinet message protocol.
+   ===================================================================== */
+'use strict';
+const TAU = Math.PI * 2;
+const clamp = (x, a, b) => x < a ? a : x > b ? b : x;
+const lerp = (a, b, t) => a + (b - a) * t;
+const rand = (a, b) => a + (b - a) * Math.random();
+const randi = (a, b) => Math.floor(rand(a, b + 1));
+const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+
+const Kit = {
+  W: 480, H: 360, scale: 1, ox: 0, oy: 0, t: 0,
+  embed: /[?&]embed=1\b/.test(location.search) && window.parent !== window,
+  keys: Object.create(null), prev: Object.create(null), touch: Object.create(null),
+  // logical buttons -> physical keys (the cabinet sends KeyJ/KeyK/KeyL/KeyI for its four buttons)
+  MAP: {
+    left: ['ArrowLeft', 'KeyA'], right: ['ArrowRight', 'KeyD'], up: ['ArrowUp', 'KeyW'], down: ['ArrowDown', 'KeyS'],
+    a: ['KeyJ', 'KeyZ', 'Space'], b: ['KeyK', 'KeyX'], c: ['KeyL', 'KeyC', 'ShiftLeft', 'ShiftRight'], d: ['KeyI', 'KeyV'],
+    start: ['Enter'], pause: ['Escape', 'KeyP'],
+  },
+  pad: Object.create(null), padPrev: Object.create(null), stick: { x: 0, y: 0 },
+  init(opts) {
+    Object.assign(this, opts);
+    const c = this.canvas = document.createElement('canvas');
+    c.id = 'screen'; document.body.appendChild(c);
+    this.ctx = c.getContext('2d');
+    if (this.embed) document.documentElement.classList.add('embed');
+    addEventListener('resize', () => this.resize()); this.resize();
+    addEventListener('keydown', e => {
+      if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
+      this.down(e.code);
+    });
+    addEventListener('keyup', e => this.up(e.code));
+    addEventListener('blur', () => { for (const k in this.keys) this.keys[k] = false; });
+    addEventListener('message', e => {
+      if (!this.embed || e.source !== window.parent) return;
+      const d = e.data; if (!d || typeof d !== 'object') return;
+      if (d.type === 'hh-key' && typeof d.code === 'string' && d.code.length < 24) d.down ? this.down(d.code) : this.up(d.code);
+      else if (d.type === 'hh-start') { this.audioInit(); this.onStart && this.onStart(); }
+      else if (d.type === 'hh-release') for (const k in this.keys) this.keys[k] = false;
+    });
+    if (!this.embed && ('ontouchstart' in window || navigator.maxTouchPoints > 0)) this.buildTouch();
+    let last = performance.now(), acc = 0;
+    const frame = now => {
+      requestAnimationFrame(frame);
+      acc = Math.min(acc + (now - last) / 1000, 0.25); last = now;
+      this.pollPad();
+      while (acc >= 1 / 60) { acc -= 1 / 60; this.t += 1 / 60; this.update(1 / 60); this.latch(); }
+      this.render();
+    };
+    requestAnimationFrame(frame);
+  },
+  down(code) {
+    if (this.keys[code]) return;
+    this.keys[code] = true; this.audioInit();
+    if (this.MAP.pause.includes(code)) {
+      if (code === 'Escape' && this.embed && this.onTitle && this.onTitle()) { parent.postMessage({ type: 'hh-exit' }, '*'); return; }
+      this.onPause && this.onPause();
+    }
+    if (this.MAP.start.includes(code)) this.onStart && this.onStart();
+  },
+  up(code) { this.keys[code] = false; },
+  held(name) {
+    if (this.touch[name] || this.pad[name]) return true;
+    for (const k of this.MAP[name]) if (this.keys[k]) return true;
+    return false;
+  },
+  // true only on the step the button went down
+  hit(name) { return this.held(name) && !this.prev[name]; },
+  latch() { for (const n in this.MAP) this.prev[n] = this.held(n); },
+  axisX() { return this.stick.x || ((this.held('right') ? 1 : 0) - (this.held('left') ? 1 : 0)); },
+  axisY() { return this.stick.y || ((this.held('down') ? 1 : 0) - (this.held('up') ? 1 : 0)); },
+  pollPad() {
+    const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+    const P = this.pad; for (const k in P) P[k] = false; this.stick.x = this.stick.y = 0;
+    for (const p of pads) {
+      if (!p) continue;
+      const b = i => p.buttons[i] && (p.buttons[i].pressed || p.buttons[i].value > 0.4);
+      const ax = p.axes[0] || 0, ay = p.axes[1] || 0;
+      if (Math.abs(ax) > 0.25) this.stick.x = ax; if (Math.abs(ay) > 0.25) this.stick.y = ay;
+      P.left = P.left || b(14); P.right = P.right || b(15); P.up = P.up || b(12); P.down = P.down || b(13);
+      P.a = P.a || b(0); P.b = P.b || b(1); P.c = P.c || b(2); P.d = P.d || b(3);
+      const st = b(9);
+      if (st && !this.padPrev.start) { this.audioInit(); this.onStart && this.onStart(); }
+      this.padPrev.start = st;
+    }
+  },
+  resize() {
+    const dpr = Math.min(devicePixelRatio || 1, 2), w = innerWidth, h = innerHeight, c = this.canvas;
+    c.width = Math.round(w * dpr); c.height = Math.round(h * dpr);
+    c.style.width = w + 'px'; c.style.height = h + 'px';
+    this.scale = Math.min(w / this.W, h / this.H) * dpr;
+    this.ox = (c.width - this.W * this.scale) / 2; this.oy = (c.height - this.H * this.scale) / 2;
+    this.dpr = dpr;
+  },
+  // map a client point to logical coordinates
+  toLogical(cx, cy) { return { x: (cx * this.dpr - this.ox) / this.scale, y: (cy * this.dpr - this.oy) / this.scale }; },
+  begin(bg = '#000') {
+    const g = this.ctx, c = this.canvas;
+    g.setTransform(1, 0, 0, 1, 0, 0); g.fillStyle = '#000'; g.fillRect(0, 0, c.width, c.height);
+    g.setTransform(this.scale, 0, 0, this.scale, this.ox, this.oy);
+    g.fillStyle = bg; g.fillRect(0, 0, this.W, this.H);
+    g.save(); g.beginPath(); g.rect(0, 0, this.W, this.H); g.clip();
+    return g;
+  },
+  end() { this.ctx.restore(); },
+
+  /* ---------- text ---------- */
+  text(s, x, y, size, color = '#fff', align = 'center', opts = {}) {
+    const g = this.ctx;
+    g.font = `${opts.italic === false ? '' : 'italic '}900 ${size}px "Arial Black", Impact, sans-serif`;
+    g.textAlign = align; g.textBaseline = 'middle';
+    if (opts.glow) { g.shadowColor = opts.glow; g.shadowBlur = opts.blur || size * 0.6; }
+    if (opts.stroke !== false) { g.lineWidth = Math.max(2, size * 0.14); g.strokeStyle = opts.stroke || '#1a0b02'; g.lineJoin = 'round'; g.strokeText(s, x, y); }
+    g.fillStyle = color; g.fillText(s, x, y);
+    g.shadowBlur = 0;
+  },
+  mono(s, x, y, size, color = '#fff', align = 'left') {
+    const g = this.ctx; g.font = `bold ${size}px ui-monospace, "Courier New", monospace`;
+    g.textAlign = align; g.textBaseline = 'middle'; g.fillStyle = color; g.fillText(s, x, y);
+  },
+  blink(rate = 1.6) { return Math.floor(this.t * rate * 2) % 2 === 0; },
+
+  /* ---------- sound ---------- */
+  ac: null,
+  audioInit() {
+    if (!this.ac) { const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return; this.ac = new AC(); this.master = this.ac.createGain(); this.master.gain.value = 0.5; this.master.connect(this.ac.destination); }
+    if (this.ac.state === 'suspended') this.ac.resume();
+  },
+  tone(f, dur = 0.1, vol = 0.2, type = 'square', slide = 0, delay = 0) {
+    const c = this.ac; if (!c) return; const t = c.currentTime + delay, o = c.createOscillator(), g = c.createGain();
+    o.type = type; o.frequency.setValueAtTime(f, t); if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(20, f * slide), t + dur);
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(this.master); o.start(t); o.stop(t + dur + 0.02);
+  },
+  noise(dur = 0.2, vol = 0.3, freq = 1200, type = 'lowpass', delay = 0) {
+    const c = this.ac; if (!c) return;
+    if (!this.nbuf) { this.nbuf = c.createBuffer(1, c.sampleRate, c.sampleRate); const d = this.nbuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; }
+    const t = c.currentTime + delay, s = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
+    s.buffer = this.nbuf; f.type = type; f.frequency.value = freq; g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    s.connect(f); f.connect(g); g.connect(this.master); s.start(t, Math.random() * 0.5); s.stop(t + dur + 0.02);
+  },
+  jingle(notes, step = 0.09, type = 'square', vol = 0.12) { notes.forEach((n, i) => this.tone(n, step * 1.6, vol, type, 0, i * step)); },
+
+  /* ---------- high scores ---------- */
+  hi(key) { try { return +localStorage.getItem('ia-hi-' + key) || 0; } catch (e) { return 0; } },
+  setHi(key, v) { try { if (v > this.hi(key)) { localStorage.setItem('ia-hi-' + key, v); return true; } } catch (e) { } return false; },
+
+  /* ---------- touch controls when the game is opened on its own ---------- */
+  buildTouch() {
+    const box = document.createElement('div'); box.id = 'touch'; document.body.appendChild(box);
+    const mk = (name, label, css) => {
+      const d = document.createElement('div'); d.className = 'tbtn'; d.textContent = label; Object.assign(d.style, css); box.appendChild(d);
+      const on = e => { e.preventDefault(); this.touch[name] = true; d.classList.add('on'); this.audioInit(); if (name === 'start') this.onStart && this.onStart(); };
+      const off = e => { e.preventDefault(); this.touch[name] = false; d.classList.remove('on'); };
+      d.addEventListener('touchstart', on, { passive: false }); d.addEventListener('touchend', off); d.addEventListener('touchcancel', off);
+    };
+    const L = this.touchLabels || {};
+    mk('left', '◀', { left: '12px', bottom: '70px' }); mk('right', '▶', { left: '120px', bottom: '70px' });
+    mk('up', '▲', { left: '66px', bottom: '124px' }); mk('down', '▼', { left: '66px', bottom: '16px' });
+    if (L.a) mk('a', L.a, { right: '16px', bottom: '40px' });
+    if (L.b) mk('b', L.b, { right: '90px', bottom: '20px' });
+    if (L.c) mk('c', L.c, { right: '30px', bottom: '116px' });
+    if (L.d) mk('d', L.d, { right: '104px', bottom: '96px' });
+    mk('start', 'START', { right: '50%', top: '8px', width: '70px', height: '34px', borderRadius: '17px', transform: 'translateX(50%)', fontSize: '12px' });
+  },
+};
+
+/* ---------- small helpers used by several games ---------- */
+class Particles {
+  constructor() { this.list = []; }
+  burst(x, y, n, colors, speed = 120, life = 0.6, size = 2, grav = 0) {
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * TAU, s = speed * (0.3 + Math.random() * 0.7);
+      this.list.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: life * (0.5 + Math.random() * 0.5), max: life, size: size * (0.6 + Math.random() * 0.8), c: pick(colors), grav });
+    }
+  }
+  update(dt) {
+    const L = this.list;
+    for (let i = L.length - 1; i >= 0; i--) {
+      const p = L[i]; p.life -= dt; if (p.life <= 0) { L.splice(i, 1); continue; }
+      p.vy += p.grav * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 0.985; p.vy *= 0.985;
+    }
+  }
+  draw(g) {
+    for (const p of this.list) { g.globalAlpha = clamp(p.life / p.max, 0, 1); g.fillStyle = p.c; g.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size); }
+    g.globalAlpha = 1;
+  }
+  clear() { this.list.length = 0; }
+}
+
+/* =====================================================================
+   NEON PONG HOCKEY — air hockey for one player vs CPU, or two players
+   ===================================================================== */
+const R = { x0: 24, x1: 456, y0: 34, y1: 346, goal: 96 };   // rink and goal mouth height
+const CY = (R.y0 + R.y1) / 2, CX = (R.x0 + R.x1) / 2;
+const MR = 17, PR = 9, WIN = 7;
+const DIFF = [{ name: 'EASY', speed: 190, react: 0.35, aim: 0.3 }, { name: 'NORMAL', speed: 270, react: 0.18, aim: 0.6 }, { name: 'HARD', speed: 370, react: 0.08, aim: 0.95 }];
+const S = {
+  mode: 'title', sel: 0, players: 1, diff: 1, score: [0, 0], paused: false,
+  m: [null, null], puck: null, fx: new Particles(), shake: 0, msg: '', msgT: 0, serveT: 0, trail: [], ptr: {}, flash: [0, 0],
+};
+function mallet(side) { return { side, x: side ? R.x1 - 60 : R.x0 + 60, y: CY, vx: 0, vy: 0, dash: 0, cool: 0, tx: null, ty: null }; }
+function newMatch() {
+  Object.assign(S, { mode: 'play', score: [0, 0], paused: false }); S.m = [mallet(0), mallet(1)];
+  S.fx.clear(); serve(Math.random() < 0.5 ? 0 : 1); Kit.jingle([523, 659, 784, 1047], 0.08);
+}
+function serve(toSide) {
+  S.puck = { x: CX + (toSide ? 40 : -40), y: CY + rand(-30, 30), vx: 0, vy: 0 };
+  S.serveT = 1.0; S.trail = [];
+}
+const half = side => side ? [CX + MR, R.x1 - MR] : [R.x0 + MR, CX - MR];
+
+/* ---------- input per side ---------- */
+function keyAxes(side) {
+  const k = c => !!Kit.keys[c];
+  if (S.players === 1) return [Kit.axisX(), Kit.axisY(), Kit.hit('a') || Kit.hit('b') || Kit.hit('c')];
+  if (side === 0) return [(k('KeyD') ? 1 : 0) - (k('KeyA') ? 1 : 0) || Kit.stick.x, (k('KeyS') ? 1 : 0) - (k('KeyW') ? 1 : 0) || Kit.stick.y, edge('p0', k('ShiftLeft') || k('KeyF') || k('Space') || Kit.pad.a)];
+  return [(k('ArrowRight') ? 1 : 0) - (k('ArrowLeft') ? 1 : 0), (k('ArrowDown') ? 1 : 0) - (k('ArrowUp') ? 1 : 0), edge('p1', k('KeyJ') || k('KeyL') || k('KeyK') || k('ShiftRight') || k('Slash'))];
+}
+const edges = {};
+function edge(id, v) { const r = v && !edges[id]; edges[id] = v; return r; }
+
+function cpu(m, dt) {
+  const D = DIFF[S.diff], P = S.puck;
+  m.think = (m.think || 0) - dt;
+  if (m.think <= 0) {
+    m.think = D.react;
+    const goalX = R.x1 - 8;
+    if (P.x > CX - 20) {
+      // puck on our side: get behind it and strike toward the far goal
+      const aimY = CY + rand(-R.goal / 2, R.goal / 2) * D.aim, dx = P.x - R.x0, dy = P.y - aimY, d = Math.hypot(dx, dy) || 1;
+      m.tx = P.x + dx / d * (MR + PR - 4) + P.vx * 0.08; m.ty = P.y + dy / d * (MR + PR - 4) + P.vy * 0.08;
+      if (P.x > m.x - 4) { m.tx = Math.min(goalX - 20, P.x + 30); m.ty = P.y + (P.y < CY ? 26 : -26); } // got behind it: circle around
+      m.wantDash = Math.random() < D.aim * 0.4 && Math.hypot(P.x - m.x, P.y - m.y) < 70;
+    } else {
+      // defend: sit between puck and our goal
+      const t = clamp((R.x1 - P.x) / 300, 0, 1);
+      m.tx = R.x1 - 50 - 30 * (1 - t); m.ty = clamp(lerp(CY, P.y, 0.6), CY - R.goal / 2 - 10, CY + R.goal / 2 + 10); m.wantDash = false;
+    }
+  }
+  return D.speed;
+}
+
+function update(dt) {
+  S.fx.update(dt); if (S.shake > 0) S.shake -= dt; S.flash = S.flash.map(f => Math.max(0, f - dt));
+  if (S.mode === 'title') { titleInput(); return; }
+  if (S.mode === 'over') { if ((S.overT -= dt) <= 0 || (S.overT < 3 && (Kit.hit('a') || Kit.hit('start')))) S.mode = 'title'; return; }
+  if (S.paused) return;
+  if (S.msgT > 0) S.msgT -= dt;
+  const P = S.puck;
+  for (const m of S.m) {
+    const [lo, hi] = half(m.side);
+    let maxV = 300, ax = 0, ay = 0, dash = false;
+    if (m.side === 1 && S.players === 1) { maxV = cpu(m, dt); dash = m.wantDash && m.cool <= 0; }
+    else { [ax, ay, dash] = keyAxes(m.side); if (ax || ay) { m.tx = null; if (![...pointers.values()].includes(m.side)) delete S.ptr[m.side]; } }
+    const ptr = S.ptr[m.side]; if (ptr) { m.tx = ptr.x; m.ty = ptr.y; maxV = 900; }
+    let tvx, tvy;
+    if (m.tx != null) { const dx = m.tx - m.x, dy = m.ty - m.y, d = Math.hypot(dx, dy); const sp = Math.min(maxV, d * 12); tvx = d > 0.5 ? dx / d * sp : 0; tvy = d > 0.5 ? dy / d * sp : 0; }
+    else { const l = Math.hypot(ax, ay) || 1; tvx = ax / Math.max(1, l) * maxV; tvy = ay / Math.max(1, l) * maxV; }
+    if (dash && m.cool <= 0) { m.dash = 0.18; m.cool = 0.9; Kit.noise(0.15, 0.15, 3000, 'highpass'); }
+    if (m.dash > 0) { m.dash -= dt; const l = Math.hypot(tvx, tvy) || 1; const dir = l > 1 ? [tvx / l, tvy / l] : [m.side ? -1 : 1, 0]; tvx = dir[0] * 620; tvy = dir[1] * 620; }
+    m.cool -= dt;
+    const k = 1 - Math.exp(-dt * (m.tx != null ? 30 : 16));
+    m.vx += (tvx - m.vx) * k; m.vy += (tvy - m.vy) * k;
+    const ox = m.x, oy = m.y;
+    m.x = clamp(m.x + m.vx * dt, lo, hi); m.y = clamp(m.y + m.vy * dt, R.y0 + MR, R.y1 - MR);
+    m.rvx = (m.x - ox) / dt; m.rvy = (m.y - oy) / dt;   // actual velocity after clamping
+  }
+  if (S.serveT > 0) { S.serveT -= dt; return; }
+  // puck physics in small steps
+  const steps = Math.ceil(Math.max(Math.hypot(P.vx, P.vy) * dt / 4, 1));
+  for (let i = 0; i < steps; i++) if (puckStep(dt / steps)) return;
+  S.trail.push([P.x, P.y]); if (S.trail.length > 14) S.trail.shift();
+  // a puck that hasn't really moved for a while (dead, or pinned between mallets and a rail) pops free
+  if (!S.jam || Math.hypot(P.x - S.jam.x, P.y - S.jam.y) > 12) S.jam = { x: P.x, y: P.y, t: 0 };
+  else if ((S.jam.t += dt) > (Math.hypot(P.vx, P.vy) > 40 ? 0.8 : 2.5)) {
+    const dx = CX - P.x, dy = CY - P.y, d = Math.hypot(dx, dy) || 1;
+    P.x += dx / d * 22; P.y += dy / d * 22; P.vx = dx / d * 220; P.vy = dy / d * 220;
+    for (const m of S.m) { const mx = m.x - P.x, my = m.y - P.y, md = Math.hypot(mx, my) || 1; if (md < 60) { const [lo, hi] = half(m.side); m.x = clamp(P.x + mx / md * 60, lo, hi); m.y = clamp(P.y + my / md * 60, R.y0 + MR, R.y1 - MR); m.vx = m.vy = 0; } }
+    S.jam = null; Kit.tone(880, 0.1, 0.06, 'sine');
+  }
+}
+function puckStep(dt) {
+  const P = S.puck;
+  P.x += P.vx * dt; P.y += P.vy * dt;
+  const fr = Math.exp(-dt * 0.35); P.vx *= fr; P.vy *= fr;
+  // walls (goal mouths are open)
+  const inMouth = Math.abs(P.y - CY) < R.goal / 2 - PR * 0.3;
+  if (P.y < R.y0 + PR) { P.y = R.y0 + PR; P.vy = Math.abs(P.vy) * 0.92; wallHit(); }
+  if (P.y > R.y1 - PR) { P.y = R.y1 - PR; P.vy = -Math.abs(P.vy) * 0.92; wallHit(); }
+  if (!inMouth) {
+    if (P.x < R.x0 + PR) { P.x = R.x0 + PR; P.vx = Math.abs(P.vx) * 0.92; wallHit(); }
+    if (P.x > R.x1 - PR) { P.x = R.x1 - PR; P.vx = -Math.abs(P.vx) * 0.92; wallHit(); }
+  } else if (P.x < R.x0 - PR) { goal(1); return true; } else if (P.x > R.x1 + PR) { goal(0); return true; }
+  // mallets
+  for (const m of S.m) {
+    const dx = P.x - m.x, dy = P.y - m.y, d = Math.hypot(dx, dy), min = MR + PR;
+    if (d >= min || d === 0) continue;
+    const nx = dx / d, ny = dy / d;
+    P.x = m.x + nx * min; P.y = m.y + ny * min;
+    // never shove the puck through a rail: keep it in and move the mallet back instead
+    const mouth = Math.abs(P.y - CY) < R.goal / 2 - PR;
+    P.y = clamp(P.y, R.y0 + PR, R.y1 - PR); if (!mouth) P.x = clamp(P.x, R.x0 + PR, R.x1 - PR);
+    const ex = P.x - m.x, ey = P.y - m.y, ed = Math.hypot(ex, ey);
+    if (ed < min - 0.01) {
+      const ux = ed > 0.01 ? ex / ed : nx, uy = ed > 0.01 ? ey / ed : ny, [lo, hi] = half(m.side);
+      m.x = clamp(P.x - ux * min, lo, hi); m.y = clamp(P.y - uy * min, R.y0 + MR, R.y1 - MR);
+    }
+    const rvx = P.vx - (m.rvx || 0), rvy = P.vy - (m.rvy || 0), vn = rvx * nx + rvy * ny;
+    if (vn < 0) {
+      const e = m.dash > 0 ? 1.25 : 0.95;
+      P.vx -= (1 + e) * vn * nx; P.vy -= (1 + e) * vn * ny;
+      const sp = Math.hypot(P.vx, P.vy), max = m.dash > 0 ? 820 : 640; if (sp > max) { P.vx *= max / sp; P.vy *= max / sp; }
+      const hard = clamp(-vn / 600, 0.1, 1);
+      Kit.tone(220 + hard * 300, 0.06, 0.08 + hard * 0.15, 'triangle'); if (hard > 0.6) { S.shake = 0.12; S.fx.burst(P.x, P.y, 10, [m.side ? '#ff3bd4' : '#2fe6ff', '#fff'], 160, 0.3); }
+    }
+  }
+  return false;
+}
+function wallHit() { const sp = Math.hypot(S.puck.vx, S.puck.vy); if (sp > 60) Kit.tone(520, 0.04, Math.min(0.12, sp / 3000), 'square'); }
+function goal(side) {
+  S.score[side]++; S.flash[1 - side] = 1; S.shake = 0.5;
+  const P = S.puck, col = side ? '#ff3bd4' : '#2fe6ff';
+  S.fx.burst(P.x < CX ? R.x0 : R.x1, CY, 90, [col, '#fff', '#ffd21f'], 260, 1.1, 3);
+  Kit.noise(1.4, 0.25, 900, 'bandpass'); Kit.jingle(side ? [784, 659, 784, 1047] : [523, 659, 784, 1047], 0.09);
+  const who = S.players === 1 ? (side === 0 ? 'YOU SCORE!' : 'CPU SCORES') : (side === 0 ? 'P1 SCORES!' : 'P2 SCORES!');
+  S.msg = who; S.msgT = 1.6;
+  if (S.score[side] >= WIN) {
+    S.mode = 'over'; S.overT = 6; S.winner = side;
+    if (S.players === 1 && side === 0) { const st = Kit.hi('neon-hockey-wins') + 1; try { localStorage.setItem('ia-hi-neon-hockey-wins', st); } catch (e) { } }
+    return;
+  }
+  for (const m of S.m) { m.x = m.side ? R.x1 - 60 : R.x0 + 60; m.y = CY; m.vx = m.vy = 0; m.tx = null; }
+  serve(1 - side);
+}
+
+/* ---------- title menu ---------- */
+const MENU = () => [['1 PLAYER  vs CPU', () => { S.players = 1; newMatch(); }], ['2 PLAYERS', () => { S.players = 2; newMatch(); }], ['CPU: ' + DIFF[S.diff].name, () => { S.diff = (S.diff + 1) % 3; }]];
+function titleInput() {
+  const n = MENU().length;
+  if (Kit.hit('down')) { S.sel = (S.sel + 1) % n; Kit.tone(660, 0.05, 0.08); }
+  if (Kit.hit('up')) { S.sel = (S.sel + n - 1) % n; Kit.tone(660, 0.05, 0.08); }
+  if (Kit.hit('a') || Kit.hit('b')) MENU()[S.sel][1]();
+}
+
+/* ---------- draw ---------- */
+function neonLine(g, col, w, f) { g.strokeStyle = col; g.shadowColor = col; g.shadowBlur = 10; g.lineWidth = w; g.beginPath(); f(); g.stroke(); g.shadowBlur = 0; }
+function render() {
+  const g = Kit.begin('#05040e');
+  if (S.shake > 0) g.translate(rand(-4, 4) * S.shake, rand(-4, 4) * S.shake);
+  // table surface with air holes
+  const tg = g.createRadialGradient(CX, CY, 20, CX, CY, 280); tg.addColorStop(0, '#141238'); tg.addColorStop(1, '#07061a');
+  g.fillStyle = tg; g.beginPath(); g.roundRect(R.x0, R.y0, R.x1 - R.x0, R.y1 - R.y0, 26); g.fill();
+  g.fillStyle = 'rgba(255,255,255,.06)'; for (let x = R.x0 + 12; x < R.x1; x += 16) for (let y = R.y0 + 12; y < R.y1; y += 16) g.fillRect(x, y, 1, 1);
+  neonLine(g, '#ff3bd4', 2, () => { g.moveTo(CX, R.y0); g.lineTo(CX, R.y1); });
+  neonLine(g, '#ff3bd4', 2, () => g.arc(CX, CY, 46, 0, TAU));
+  neonLine(g, '#2fe6ff', 2, () => g.arc(R.x0, CY, R.goal / 2 + 26, -Math.PI / 2, Math.PI / 2));
+  neonLine(g, '#ff3bd4', 2, () => g.arc(R.x1, CY, R.goal / 2 + 26, Math.PI / 2, Math.PI * 1.5));
+  // rails and goal mouths
+  neonLine(g, '#e8e6ff', 4, () => g.roundRect(R.x0, R.y0, R.x1 - R.x0, R.y1 - R.y0, 26));
+  for (const side of [0, 1]) {
+    const x = side ? R.x1 : R.x0, col = side ? '#ff3bd4' : '#2fe6ff';
+    g.fillStyle = '#05040e'; g.fillRect(x - 6, CY - R.goal / 2, 12, R.goal);
+    neonLine(g, col, 4 + S.flash[side] * 6, () => { g.moveTo(x, CY - R.goal / 2); g.lineTo(x + (side ? 10 : -10), CY - R.goal / 2); g.lineTo(x + (side ? 10 : -10), CY + R.goal / 2); g.lineTo(x, CY + R.goal / 2); });
+  }
+  if (S.mode === 'title') { drawTitle(g); Kit.end(); return; }
+  // puck trail and puck
+  const P = S.puck;
+  S.trail.forEach(([x, y], i) => { g.globalAlpha = (i / S.trail.length) * 0.4; g.fillStyle = '#ffd21f'; g.beginPath(); g.arc(x, y, PR * (i / S.trail.length), 0, TAU); g.fill(); });
+  g.globalAlpha = 1;
+  if (S.serveT > 0 && Kit.blink(4)) g.globalAlpha = 0.4;
+  g.shadowColor = '#ffd21f'; g.shadowBlur = 14; g.fillStyle = '#1a1405'; g.beginPath(); g.arc(P.x, P.y, PR, 0, TAU); g.fill();
+  g.lineWidth = 3; g.strokeStyle = '#ffd21f'; g.stroke(); g.shadowBlur = 0; g.globalAlpha = 1;
+  // mallets
+  for (const m of S.m) {
+    const col = m.side ? '#ff3bd4' : '#2fe6ff';
+    g.shadowColor = col; g.shadowBlur = m.dash > 0 ? 30 : 14;
+    const mg = g.createRadialGradient(m.x - 5, m.y - 5, 2, m.x, m.y, MR); mg.addColorStop(0, '#fff'); mg.addColorStop(0.35, col); mg.addColorStop(1, '#0a0a20');
+    g.fillStyle = mg; g.beginPath(); g.arc(m.x, m.y, MR, 0, TAU); g.fill();
+    g.shadowBlur = 0; g.fillStyle = 'rgba(0,0,0,.45)'; g.beginPath(); g.arc(m.x, m.y, MR * 0.45, 0, TAU); g.fill();
+    g.fillStyle = col; g.beginPath(); g.arc(m.x, m.y, MR * 0.28, 0, TAU); g.fill();
+    if (m.cool > 0) { g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = 2; g.beginPath(); g.arc(m.x, m.y, MR + 4, -Math.PI / 2, -Math.PI / 2 + TAU * (1 - m.cool / 0.9)); g.stroke(); }
+  }
+  S.fx.draw(g);
+  // scoreboard
+  const n0 = S.players === 1 ? 'YOU' : 'P1', n1 = S.players === 1 ? 'CPU' : 'P2';
+  Kit.text(n0 + '  ' + S.score[0], CX - 52, 16, 16, '#2fe6ff', 'right', { glow: '#2fe6ff', blur: 8 });
+  Kit.text(S.score[1] + '  ' + n1, CX + 52, 16, 16, '#ff3bd4', 'left', { glow: '#ff3bd4', blur: 8 });
+  Kit.mono('FIRST TO ' + WIN, CX, 16, 9, '#8a85a8', 'center');
+  if (S.msgT > 0) Kit.text(S.msg, CX, CY, 30, '#ffd21f', 'center', { glow: '#ffd21f', blur: 12 });
+  if (S.paused) { g.fillStyle = 'rgba(0,0,0,.55)'; g.fillRect(0, 0, 480, 360); Kit.text('PAUSED', CX, CY, 30, '#ffd21f'); }
+  if (S.mode === 'over') {
+    g.fillStyle = 'rgba(0,0,0,.5)'; g.fillRect(0, 0, 480, 360);
+    const t = S.players === 1 ? (S.winner === 0 ? 'YOU WIN!' : 'CPU WINS') : (S.winner === 0 ? 'PLAYER 1 WINS!' : 'PLAYER 2 WINS!');
+    Kit.text(t, CX, CY - 14, 32, S.winner ? '#ff3bd4' : '#2fe6ff', 'center', { glow: '#fff', blur: 10 });
+    Kit.mono(S.score[0] + ' - ' + S.score[1], CX, CY + 22, 16, '#fff', 'center');
+  }
+  Kit.end();
+}
+function drawTitle(g) {
+  Kit.text('NEON PONG', CX, 92, 44, '#2fe6ff', 'center', { glow: '#2fe6ff' });
+  Kit.text('HOCKEY', CX, 138, 44, '#ff3bd4', 'center', { glow: '#ff3bd4' });
+  MENU().forEach(([label], i) => {
+    const y = 192 + i * 30, on = i === S.sel;
+    if (on) { g.fillStyle = 'rgba(47,230,255,.15)'; g.fillRect(CX - 110, y - 12, 220, 24); }
+    Kit.text((on ? '▶ ' : '') + label, CX, y, on ? 17 : 15, on ? '#ffd21f' : '#fff', 'center');
+  });
+  Kit.mono('↑ ↓ choose  ·  FIRE / START to pick', CX, 290, 9, '#8a85a8', 'center');
+  Kit.mono('1P: arrows / WASD / mouse / drag · FIRE = SMASH', CX, 306, 9, '#8a85a8', 'center');
+  Kit.mono('2P: P1 WASD + Space · P2 arrows + J · or one finger per half', CX, 320, 9, '#8a85a8', 'center');
+  const w = Kit.hi('neon-hockey-wins'); if (w) Kit.mono('WINS vs CPU: ' + w, CX, 336, 9, '#ffd21f', 'center');
+}
+
+/* ---------- boot ---------- */
+Kit.init({
+  W: 480, H: 360, update, render, touchLabels: { a: 'SMASH' },
+  onStart() { if (S.mode === 'title') MENU()[S.sel][1](); else if (S.mode === 'play') S.paused = !S.paused; else if (S.mode === 'over' && S.overT < 4) S.mode = 'title'; },
+  onPause() { if (S.mode === 'play') S.paused = !S.paused; },
+  onTitle() { return S.mode === 'title'; },
+});
+// pointers: in 1P any pointer drives your mallet; in 2P each half of the table belongs to one player
+const pointers = new Map();
+function ptrSide(x) { return S.players === 1 ? 0 : (x < CX ? 0 : 1); }
+Kit.canvas.addEventListener('pointerdown', e => {
+  Kit.audioInit();
+  const p = Kit.toLogical(e.clientX, e.clientY);
+  if (S.mode !== 'play') return;
+  const side = ptrSide(p.x); pointers.set(e.pointerId, side); S.ptr[side] = p;
+});
+Kit.canvas.addEventListener('pointermove', e => {
+  const p = Kit.toLogical(e.clientX, e.clientY);
+  if (S.mode !== 'play') return;
+  if (pointers.has(e.pointerId)) S.ptr[pointers.get(e.pointerId)] = p;
+  else if (e.pointerType === 'mouse' && S.players === 1) S.ptr[0] = p;     // mouse steers without clicking
+});
+const lift = e => { if (pointers.has(e.pointerId)) { delete S.ptr[pointers.get(e.pointerId)]; pointers.delete(e.pointerId); } };
+Kit.canvas.addEventListener('pointerup', lift); Kit.canvas.addEventListener('pointercancel', lift);
+Kit.canvas.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') delete S.ptr[0]; });
+
+</script>
+</body>
+</html>
