@@ -93,6 +93,23 @@ table.res td.t{text-align:right;font-variant-numeric:tabular-nums}
   .keys{font-size:11px} .tips{font-size:11px}
 }
 html.embed #touch{display:none!important}
+/* short screens (the cabinet screen on a phone): menus go two-across and drop the descriptions */
+@media (max-height:520px){
+  .screen{padding:8px}
+  .logo{font-size:min(11vw,46px);letter-spacing:-1px}
+  .tag{display:none}
+  .menu{display:grid;grid-template-columns:1fr 1fr;gap:6px;width:min(560px,96vw)}
+  .menu .btn{padding:7px 10px;font-size:13px;border-width:2px;box-shadow:3px 3px 0 #1a0b02}
+  .btn .d{display:none}
+  .menu .btn:last-child:nth-child(odd){grid-column:1/-1}
+  .btn:hover,.btn.sel{transform:skewX(-8deg) translateX(3px)}
+  .screen{touch-action:pan-y;-webkit-overflow-scrolling:touch}
+  #pause .menu,#results .menu{margin-top:10px!important}
+  .panel{padding:10px 14px;border-width:2px}
+  .panel h2{margin:0 0 6px;font-size:18px}
+  table.res{font-size:12px} table.res td{padding:2px 6px}
+  .keys{font-size:11px;gap:3px 10px} .tips{font-size:11px;margin-top:6px;line-height:1.35}
+}
 </style>
 </head>
 <body>
@@ -2592,11 +2609,11 @@ const Menu = {
   screen() { for (const id of ['help', 'results', 'pause', 'menu']) if (!$(id).classList.contains('hidden')) return $(id); return null; },
   active() { return !!this.screen(); },
   buttons() { const s = this.screen(); return s ? [...s.querySelectorAll('.btn')] : []; },
-  focus(i) { const b = this.buttons(); if (!b.length) return; this.idx = (i + b.length) % b.length; b.forEach((x, k) => x.classList.toggle('sel', k === this.idx)); },
+  focus(i) { fitScreens(); const b = this.buttons(); if (!b.length) return; this.idx = (i + b.length) % b.length; b.forEach((x, k) => x.classList.toggle('sel', k === this.idx)); },
   key(code) {
     const b = this.buttons(); if (!b.length) return false;
-    if (code === 'ArrowDown' || code === 'KeyS') { this.focus(this.idx + 1); return true; }
-    if (code === 'ArrowUp' || code === 'KeyW') { this.focus(this.idx - 1); return true; }
+    if (code === 'ArrowDown' || code === 'KeyS' || code === 'ArrowRight' || code === 'KeyD') { this.focus(this.idx + 1); return true; }
+    if (code === 'ArrowUp' || code === 'KeyW' || code === 'ArrowLeft' || code === 'KeyA') { this.focus(this.idx - 1); return true; }
     if (code === 'Enter' || code === 'Space') { this.act(b[this.idx].dataset.act); return true; }
     return true;
   },
@@ -2672,7 +2689,23 @@ function onResize() {
   const sc = h * renderer.getPixelRatio() / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2));
   if (clods) { clods.uScale.value = sc; dust.uScale.value = sc; }
 }
+// If a menu still doesn't fit (tiny screens), shrink its contents until it does.
+function fitScreens() {
+  for (const el of document.querySelectorAll('.screen')) {
+    if (el.classList.contains('hidden')) continue;
+    const kids = [...el.children];
+    kids.forEach(c => c.style.zoom = '');
+    for (let pass = 0; pass < 3; pass++) {
+      const cs = getComputedStyle(el), avail = el.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+      const need = kids.reduce((h, c) => { const r = c.getBoundingClientRect(), m = getComputedStyle(c); return h + r.height + (parseFloat(m.marginTop) || 0) + (parseFloat(m.marginBottom) || 0); }, 0);
+      if (need <= avail + 1 || (parseFloat(kids[0].style.zoom) || 1) <= 0.6) break;
+      const z = Math.max(0.6, (parseFloat(kids[0].style.zoom) || 1) * avail / need);   // below this, scroll instead
+      kids.forEach(c => c.style.zoom = z.toFixed(3));
+    }
+  }
+}
 addEventListener('resize', onResize);
+addEventListener('resize', fitScreens);
 let lastT = performance.now();
 function frame(now) {
   requestAnimationFrame(frame);
