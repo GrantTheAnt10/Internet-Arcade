@@ -79,30 +79,44 @@ body.zoomed .cab:not(.sel){filter:brightness(.25)}
     repeating-linear-gradient(180deg,rgba(255,255,255,.035) 0 1px,rgba(0,0,0,.22) 1px 3px),
     radial-gradient(ellipse at 50% 50%,transparent 58%,rgba(0,0,0,.55) 100%),
     linear-gradient(135deg,rgba(255,255,255,.14) 0%,transparent 30%)}
-.cab .panel{position:absolute;left:10px;right:10px;top:372px;height:132px;border-radius:12px 12px 22px 22px;
+.cab .panel{position:absolute;left:10px;right:10px;top:372px;height:180px;border-radius:12px 12px 22px 22px;
   background:linear-gradient(180deg,#3b2f63 0%,#241c40 30%,#191230 100%);box-shadow:inset 0 3px 0 rgba(255,255,255,.15),inset 0 0 0 3px #000,0 10px 20px rgba(0,0,0,.5)}
 .cab .panel::before{content:"";position:absolute;left:10px;right:10px;top:8px;bottom:12px;border-radius:10px;
   background:linear-gradient(110deg,var(--c1) 0 30%,transparent 30% 34%,var(--c2) 34% 38%,transparent 38%);opacity:.18}
-.stick{position:absolute;left:26px;top:8px;width:92px;height:92px;border-radius:50%;
+.stick{position:absolute;left:22px;top:54px;width:104px;height:104px;border-radius:50%;
   background:radial-gradient(circle at 50% 45%,#0b0814 0 22%,#2a2244 23% 60%,#0d0918 62%);box-shadow:inset 0 0 0 3px #000,0 4px 0 #000;touch-action:none}
-.stick .knob{position:absolute;left:50%;top:50%;width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;
+.stick .knob{position:absolute;left:50%;top:50%;width:52px;height:52px;margin:-26px 0 0 -26px;border-radius:50%;
   background:radial-gradient(circle at 35% 30%,#fff 0 6%,var(--c1) 30%,color-mix(in srgb,var(--c1) 55%,#000) 100%);
   box-shadow:0 6px 0 rgba(0,0,0,.55),inset 0 -4px 6px rgba(0,0,0,.35);transition:transform .08s}
-.pbs{position:absolute;right:14px;top:8px;width:160px;height:116px}
-.pb{position:absolute;width:48px;height:48px;border-radius:50%;border:0;padding:0;cursor:pointer;touch-action:none;
+.pbs{position:absolute;left:148px;top:26px;width:160px;height:150px}
+.pb{position:absolute;width:54px;height:54px;border-radius:50%;border:0;padding:0;cursor:pointer;touch-action:none;
   background:radial-gradient(circle at 38% 32%,rgba(255,255,255,.85) 0 7%,var(--b) 32%,color-mix(in srgb,var(--b) 55%,#000) 100%);
   box-shadow:0 6px 0 #000,inset 0 -5px 8px rgba(0,0,0,.35);transition:transform .06s,box-shadow .06s}
 .pb.on{transform:translateY(4px);box-shadow:0 2px 0 #000,0 0 22px var(--b),inset 0 -5px 8px rgba(0,0,0,.35)}
-.pb i{position:absolute;left:50%;top:50px;transform:translateX(-50%);font-style:normal;font-family:Arial,sans-serif;font-weight:bold;font-size:10px;letter-spacing:.5px;color:#cfc6ef;white-space:nowrap;pointer-events:none}
-.start{position:absolute;left:44px;top:104px;width:56px;height:20px;border:0;border-radius:11px;cursor:pointer;touch-action:none;
-  background:linear-gradient(180deg,#fff,#c9c3dd);color:#111;font:bold 10px Arial,sans-serif;letter-spacing:1px;box-shadow:0 3px 0 #000}
+.pb i{position:absolute;left:50%;top:59px;transform:translateX(-50%);font-style:normal;font-family:Arial,sans-serif;font-weight:bold;font-size:10px;letter-spacing:.5px;color:#cfc6ef;white-space:nowrap;pointer-events:none}
+.start{position:absolute;left:26px;top:14px;width:96px;height:24px;border:0;border-radius:12px;cursor:pointer;touch-action:none;
+  background:linear-gradient(180deg,#fff,#c9c3dd);color:#111;font:bold 11px Arial,sans-serif;letter-spacing:2px;box-shadow:0 3px 0 #000}
 .start.on{transform:translateY(2px);box-shadow:0 1px 0 #000}
 /* controls only respond on the machine you are playing */
 .cab:not(.active) .stick,.cab:not(.active) .pb,.cab:not(.active) .start{pointer-events:none}
-.cab .coin{position:absolute;left:50%;top:520px;width:150px;height:96px;margin-left:-75px;border-radius:8px;
-  background:linear-gradient(180deg,#2a2240,#160f28);box-shadow:inset 0 0 0 3px #000;display:flex;align-items:center;justify-content:center;gap:22px}
-.cab .coin i{display:block;width:30px;height:46px;border-radius:5px;background:#0a0710;box-shadow:inset 0 0 0 2px #000,0 0 12px rgba(255,59,59,.5);position:relative}
-.cab .coin i::after{content:"";position:absolute;left:13px;top:8px;width:4px;height:20px;border-radius:2px;background:#ff4a3a;box-shadow:0 0 8px #ff4a3a}
+.cab .coin{position:absolute;left:50%;top:566px;width:170px;height:104px;margin-left:-85px;border-radius:8px;
+  background:linear-gradient(180deg,#3a3352,#1c1530);box-shadow:inset 0 0 0 3px #000,inset 0 3px 0 rgba(255,255,255,.12)}
+.coinlbl{position:absolute;top:7px;left:0;right:0;text-align:center;font:bold 10px Arial,sans-serif;letter-spacing:2px;color:#ff6a5a;text-shadow:0 0 6px #ff4a3a;opacity:.55}
+.cab.sel .coinlbl{opacity:1;animation:blinkT 1.2s steps(2) infinite}
+.slots{position:absolute;left:0;right:0;top:24px;display:flex;justify-content:center;gap:34px}
+.slot{display:block;position:relative;width:36px;height:60px;border-radius:6px;background:linear-gradient(180deg,#e2e5ea,#8a8f9a 55%,#5d626c);
+  box-shadow:inset 0 0 0 2px #000,0 3px 0 #000}
+.slot b{position:absolute;left:14px;top:9px;width:8px;height:32px;border-radius:3px;background:#5a120c;box-shadow:inset 0 0 0 2px #000,0 0 8px rgba(255,74,58,.7);transition:background .15s,box-shadow .15s}
+.slot u{position:absolute;left:0;right:0;bottom:4px;text-align:center;text-decoration:none;font:bold 9px Arial,sans-serif;color:#222}
+.cab.credited .slot:first-child b{background:#fff3b0;box-shadow:inset 0 0 0 2px #000,0 0 18px #ffd34a,0 0 40px #ffb000}
+.coinfly{position:absolute;left:30px;top:29px;width:40px;height:40px;border-radius:50%;opacity:0;pointer-events:none;z-index:5;
+  background:radial-gradient(circle at 35% 30%,#fff9d0 0 8%,#ffd34a 32%,#d99a16 72%,#8a5a06 100%);
+  box-shadow:inset 0 0 0 3px #b47a0a,inset 0 0 0 6px #ffe27a,inset 0 0 0 7px #b47a0a;
+  display:flex;align-items:center;justify-content:center;font:900 18px "Arial Black",Arial,sans-serif;color:#a86c06;text-shadow:1px 1px 0 #ffe9a0}
+.credit{position:absolute;top:8px;right:12px;font:bold 12px Arial,sans-serif;letter-spacing:2px;color:#fff;text-shadow:0 0 6px #000,0 0 2px #000;opacity:0;z-index:2}
+.cab.credited .credit{opacity:1;animation:blinkT .25s steps(2) 6}
+.cab.credited .marquee{animation:credFlash .45s ease-out 3}
+@keyframes credFlash{0%{filter:brightness(2.2);box-shadow:0 0 0 4px #000,0 0 90px var(--c2)}100%{filter:none}}
 .cab .plate{position:absolute;left:50%;top:calc(var(--cabH) + 18px);transform:translateX(-50%);white-space:nowrap;font-style:italic;font-size:22px;
   color:#fff;text-shadow:0 0 10px var(--c1);transition:opacity .4s}
 .cab .plate small{display:block;text-align:center;font:bold 13px Arial,sans-serif;opacity:.75;font-style:normal;letter-spacing:1px}
@@ -181,7 +195,8 @@ const DEFAULT_BUTTONS = [['A', 'KeyJ', '#3bff4a'], ['B', 'KeyL', '#28d7ff'], ['C
 const CAB_W = 360, CAB_H = 690, GAP = 90, PITCH = CAB_W + GAP;
 // regions inside a cabinet (design px)
 const BEZEL = { x: 18, y: 104, w: 324, h: 256 }, SCREEN = { x: 36, y: 124, w: 288, h: 216 };
-const PLAY_MOBILE = { x: 4, y: 96, w: CAB_W - 8, h: 512 - 96 };   // screen + control panel
+const PLAY_MOBILE = { x: 4, y: 96, w: CAB_W - 8, h: 558 - 96 };   // screen + control panel
+const COIN_VIEW = { x: 20, y: 364, w: CAB_W - 40, h: CAB_H - 364 };  // control panel + coin door
 
 const $ = s => document.querySelector(s);
 const room = $('#room'), world = $('#world'), frame = $('#frame'), legend = $('#legend'), hint = $('#hint');
@@ -198,12 +213,12 @@ const cabs = MACHINES.map((m, i) => {
         <div class="att-title">HILL HOP<small>64</small></div><div class="press">PRESS START</div></div>`
     : `<div class="attract att-soon"><div class="att-title">COMING<br>SOON</div><div class="press">NO GAME LOADED</div></div>`;
   const btns = (m.buttons || DEFAULT_BUTTONS).map(([label, code, col], k) =>
-    `<button class="pb" data-code="${code}" style="--b:${col};left:${(k % 2) * 78 + 16}px;top:${k > 1 ? 60 : 2}px" aria-label="${label}"><i>${label}</i></button>`).join('');
+    `<button class="pb" data-code="${code}" style="--b:${col};left:${(k % 2) * 74 + (k > 1 ? 30 : 10)}px;top:${k > 1 ? 76 : 0}px" aria-label="${label}"><i>${label}</i></button>`).join('');
   el.innerHTML = `<div class="floorglow"></div><div class="body"></div><div class="side l"></div><div class="side r"></div>
     <div class="marquee"><span>${m.title}</span></div>
-    <div class="bezel"><div class="screen">${att}<div class="glass"></div></div></div>
+    <div class="bezel"><div class="screen">${att}<div class="credit">CREDIT 01</div><div class="glass"></div></div></div>
     <div class="panel"><button class="start" aria-label="Start">START</button><div class="stick" aria-label="Joystick"><div class="knob"></div></div><div class="pbs">${btns}</div></div>
-    <div class="coin"><i></i><i></i></div>
+    <div class="coin"><div class="coinlbl">INSERT COIN</div><div class="slots"><i class="slot"><b></b><u>25¢</u></i><i class="slot"><b></b><u>25¢</u></i></div><div class="coinfly">★</div></div>
     <div class="plate">${m.title}<small>${m.sub}</small></div>`;
   world.appendChild(el);
   return el;
@@ -248,17 +263,78 @@ function select(i, how = 'glide') {
   apply(hallView(camX), how);
 }
 
-/* ---------- playing a machine ---------- */
-let leaveTimer = 0;
-function play(i) {
+/* ---------- inserting a coin, then playing a machine ---------- */
+let leaveTimer = 0, seq = 0;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+// the coin is flicked in from the player's side, flips over, turns edge-on and drops into the left slot
+const COIN_FLIGHT = [
+  { transform: 'perspective(400px) translate(170px,190px) scale(2.4) rotateZ(-40deg) rotateY(0deg)', opacity: 0, filter: 'brightness(1)', offset: 0 },
+  { opacity: 1, offset: 0.08 },
+  { transform: 'perspective(400px) translate(80px,-95px) scale(1.6) rotateZ(-12deg) rotateY(540deg)', offset: 0.45 },
+  { transform: 'perspective(400px) translate(0px,-16px) scale(1.06) rotateZ(0deg) rotateY(720deg)', offset: 0.72 },
+  { transform: 'perspective(400px) translate(0px,0px) scale(1) rotateZ(0deg) rotateY(810deg)', opacity: 1, filter: 'brightness(1)', offset: 0.86 },
+  { transform: 'perspective(400px) translate(0px,2px) scale(.55) rotateZ(0deg) rotateY(810deg)', opacity: 0, filter: 'brightness(.25)', offset: 1 },
+];
+async function play(i) {
   if (mode !== 'hall') return;
   if (i !== sel) { select(i); return; }
-  mode = 'zooming'; document.body.classList.add('zoomed');
+  const my = ++seq, cab = cabs[i];
+  Sfx.init();
+  mode = 'coin'; document.body.classList.add('zoomed');
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) { cab.classList.add('credited'); Sfx.coin(); return zoomIn(i); }
+  apply(fitView(i, COIN_VIEW, { x: 0, y: 0, w: innerWidth, h: innerHeight }), 'anim');
+  await sleep(800); if (my !== seq) return;
+  Sfx.whoosh();
+  cab.querySelector('.coinfly').animate(COIN_FLIGHT, { duration: 1150, easing: 'cubic-bezier(.35,.05,.35,1)', fill: 'forwards' });
+  await sleep(1000); if (my !== seq) return;
+  Sfx.coin(); cab.classList.add('credited');
+  await sleep(500); if (my !== seq) return;
+  Sfx.credit();
+  await sleep(450); if (my !== seq) return;
+  zoomIn(i);
+}
+// tapping again or pressing Enter during the coin animation jumps straight to the game
+function skipCoin() {
+  if (mode !== 'coin') return;
+  seq++;
+  const cab = cabs[sel];
+  for (const a of cab.querySelector('.coinfly').getAnimations()) a.finish();
+  if (!cab.classList.contains('credited')) { cab.classList.add('credited'); Sfx.coin(); }
+  zoomIn(sel);
+}
+function zoomIn(i) {
+  mode = 'zooming';
   cabs[i].classList.add('active');
   apply(playView(i), 'anim');
   clearTimeout(leaveTimer);
   leaveTimer = setTimeout(() => { if (mode === 'zooming') { mode = 'playing'; mountGame(); } }, 880);
 }
+
+/* ---------- sound: coin clink, credit jingle ---------- */
+const Sfx = {
+  ctx: null,
+  init() {
+    if (!this.ctx) { const AC = window.AudioContext || window.webkitAudioContext; if (AC) this.ctx = new AC(); }
+    if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
+  },
+  tone(f, at, dur, vol, type = 'sine') {
+    const c = this.ctx; if (!c) return; const t = c.currentTime + at, o = c.createOscillator(), g = c.createGain();
+    o.type = type; o.frequency.setValueAtTime(f, t); g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(c.destination); o.start(t); o.stop(t + dur + 0.02);
+  },
+  noise(at, dur, vol, freq, type = 'lowpass') {
+    const c = this.ctx; if (!c) return; const t = c.currentTime + at, b = c.createBuffer(1, c.sampleRate * dur, c.sampleRate), d = b.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
+    const s = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain(); s.buffer = b; f.type = type; f.frequency.value = freq; g.gain.value = vol;
+    s.connect(f); f.connect(g); g.connect(c.destination); s.start(t);
+  },
+  whoosh() { this.noise(0, 0.5, 0.12, 1800, 'bandpass'); },
+  coin() { // metal on metal, then the coin rattling down the chute
+    this.tone(2637, 0, 0.22, 0.18); this.tone(3951, 0.012, 0.3, 0.1); this.tone(1976, 0.05, 0.18, 0.08, 'triangle');
+    this.noise(0.08, 0.06, 0.25, 3000, 'highpass'); this.noise(0.2, 0.05, 0.18, 2500, 'highpass'); this.noise(0.3, 0.12, 0.35, 380);
+  },
+  credit() { [523, 659, 784, 1047].forEach((f, k) => this.tone(f, k * 0.075, 0.14, 0.09, 'square')); },
+};
 function mountGame() {
   const m = MACHINES[sel];
   placeOverlays();
@@ -281,7 +357,9 @@ function placeOverlays() {
   legend.style.top = Math.min(innerHeight - 70, bezelBottom + 12) + 'px';
 }
 function leave() {
-  if (mode !== 'playing' && mode !== 'zooming') return;
+  if (mode !== 'playing' && mode !== 'zooming' && mode !== 'coin') return;
+  seq++;
+  for (const c of cabs) { c.classList.remove('credited'); for (const a of c.querySelector('.coinfly').getAnimations()) a.cancel(); }
   releaseAll();
   mode = 'leaving';
   frame.classList.remove('show'); legend.classList.remove('show');
@@ -312,9 +390,9 @@ addEventListener('message', e => {
 for (const stick of document.querySelectorAll('.stick')) {
   const knob = stick.querySelector('.knob'); let pid = null;
   const move = e => {
-    const r = stick.getBoundingClientRect(), s = r.width / 92;
+    const r = stick.getBoundingClientRect(), s = r.width / 104;
     let dx = (e.clientX - (r.left + r.width / 2)) / s, dy = (e.clientY - (r.top + r.height / 2)) / s;
-    const d = Math.hypot(dx, dy), max = 26; if (d > max) { dx *= max / d; dy *= max / d; }
+    const d = Math.hypot(dx, dy), max = 28; if (d > max) { dx *= max / d; dy *= max / d; }
     knob.style.transform = `translate(${dx}px,${dy}px)`;
     const t = 11;
     key('ArrowLeft', dx < -t); key('ArrowRight', dx > t); key('ArrowUp', dy < -t); key('ArrowDown', dy > t);
@@ -339,6 +417,7 @@ for (const b of document.querySelectorAll('.start')) {
 /* ---------- browsing: drag, swipe, wheel, keys ---------- */
 let drag = null;
 room.addEventListener('pointerdown', e => {
+  if (mode === 'coin') { skipCoin(); return; }
   if (mode !== 'hall' || e.button > 0) return;
   drag = { id: e.pointerId, x0: e.clientX, x: e.clientX, cam0: camX, moved: false, t: performance.now(), v: 0 };
   try { room.setPointerCapture(e.pointerId); } catch (err) { }
@@ -384,6 +463,9 @@ addEventListener('keydown', e => {
     if (e.code === 'ArrowLeft' || e.code === 'KeyA') { select(sel - 1); e.preventDefault(); }
     else if (e.code === 'ArrowRight' || e.code === 'KeyD') { select(sel + 1); e.preventDefault(); }
     else if (e.code === 'Enter' || e.code === 'Space') { play(sel); e.preventDefault(); }
+  } else if (mode === 'coin') {
+    if (e.code === 'Escape') leave();
+    else if (e.code === 'Enter' || e.code === 'Space') { skipCoin(); e.preventDefault(); }
   } else if (mode === 'playing') {
     // the page has focus (e.g. after clicking a bezel): Esc leaves, everything else goes to the game
     if (e.code === 'Escape' && !MACHINES[sel].src) { leave(); return; }
@@ -397,13 +479,14 @@ addEventListener('blur', () => { if (document.activeElement !== frame) releaseAl
 
 function setHint() {
   hint.innerHTML = isTouch()
-    ? 'Swipe to browse · tap a machine to play'
-    : '<kbd>←</kbd><kbd>→</kbd> choose · <kbd>Enter</kbd> play · drag to browse';
+    ? 'Swipe to browse · tap a machine to insert a coin'
+    : '<kbd>←</kbd><kbd>→</kbd> choose · <kbd>Enter</kbd> insert coin · drag to browse';
 }
 addEventListener('resize', () => {
   setHint();
   if (mode === 'hall') apply(hallView(camX), 'none');
   else if (mode === 'playing' || mode === 'zooming') { apply(playView(sel), 'none'); placeOverlays(); }
+  else if (mode === 'coin') apply(fitView(sel, COIN_VIEW, { x: 0, y: 0, w: innerWidth, h: innerHeight }), 'none');
 });
 room.tabIndex = -1;
 setHint();

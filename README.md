@@ -8,6 +8,7 @@ The page starts zoomed out on a row of cabinets.
 
 - Browse with ← → (or A D), the on-screen arrows, the mouse wheel, by dragging with the mouse, or by swiping on a touch screen.
 - Press Enter or click/tap a machine to play it. Clicking a machine that isn't selected selects it first.
+- The camera then moves down to the coin door, a coin flips in and drops into the slot, the slot lights up, the marquee flashes and the screen shows CREDIT 01 before zooming in. Press Enter or tap again to skip it. With reduced motion turned on, it is skipped automatically.
 - On a computer the camera zooms almost all the way into the cabinet, keeping the bezel on both sides of the screen, and the game's keyboard controls fade in underneath. Keys go straight to the game.
 - On a phone the camera frames the screen and the control panel. The joystick, the four buttons and START on the cabinet are live and drive the game.
 - ◀ ARCADE (top left) goes back to the room. In Hill Hop 64, Esc on the title screen does the same.
