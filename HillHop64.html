@@ -130,6 +130,7 @@ html.embed #touch{display:none!important}
     <button class="btn dim opt" data-act="laps">LAPS <b id="oLaps">3</b></button>
     <button class="btn dim opt" data-act="diff">DIFFICULTY <b id="oDiff">PRO</b></button>
     <button class="btn dim opt" data-act="gas">AUTO-GAS <b id="oGas">ON</b></button>
+    <button class="btn dim opt" data-act="assist">LANDING ASSIST <b id="oAssist">ON</b></button>
     <button class="btn dim opt" data-act="gfx">GRAPHICS <b id="oGfx">HIGH</b></button>
     <button class="btn dim" data-act="help">HOW TO RIDE</button>
   </div>
@@ -151,6 +152,7 @@ html.embed #touch{display:none!important}
       <span>Gamepad</span><span>Stick steer + lean · A gas · X brake · B / RB / RT boost · Y / LB pre-load · Start pause</span>
     </div>
     <div class="tips">
+      With LANDING ASSIST on, the bike levels itself toward the slope below when you let go of lean; lean to override it or to flip.
       Land parallel to the slope for a CLEAN LANDING speed boost. Coming down rear wheel first on flat ground costs you a little speed.
       Coming down front wheel first is a wipeout.<br>
       Holding turbo heats the engine. Max it out and you crawl for 5 seconds. Ride through the glowing blue COOL zones to reset the gauge instantly.<br>
@@ -533,19 +535,19 @@ class Track {
     this.features = [
       // split section: left lane double, middle lane whoops, right lane flat with a cool zone
       { s: 80, lane: 'L', f: S.kicker(8, 3.2, 4), lip: 88, name: 'double' },
-      { s: 101, lane: 'L', f: S.mound(3.5, 1.5, 15, 3.0) },
+      { s: 97, lane: 'L', f: S.mound(7.5, 1.5, 15, 3.0) },
       { s: 84, lane: 'M', f: S.whoops(7, 6, 0.85) },
       { s: 150, lane: null, f: S.table(9, 3.4, 11, 13), lip: 159, name: 'table' },
       { s: 245, lane: null, f: S.whoops(4, 16, 1.3) },
       { s: 372, lane: null, f: S.kicker(7, 2.6, 0), lip: 379, name: 'step-up' },
-      { s: 389, lane: null, f: S.mound(2.5, 16, 18, 3.6) },
+      { s: 383, lane: null, f: S.mound(8.5, 16, 18, 3.6) },
       { s: 600, lane: null, f: S.whoops(7, 5.2, 0.75) },
       { s: 792, lane: null, f: S.kicker(11, 4.2, 5), lip: 803, name: 'triple' },
-      { s: 829, lane: null, f: S.mound(4, 2, 22, 4.6) },
+      { s: 821.5, lane: null, f: S.mound(11.5, 2, 22, 4.6) },
       { s: 872, lane: null, f: S.hill(52, 6.5), lip: 898, name: 'hill' },
       { s: 1000, lane: null, f: S.whoops(3, 18, 1.5) },
       { s: 1236, lane: null, f: S.kicker(6, 2.2, 3), lip: 1242, name: 'rhythm' },
-      { s: 1255, lane: null, f: S.mound(2.5, 1, 10, 2.2) },
+      { s: 1252, lane: null, f: S.mound(5.5, 1, 10, 2.2) },
     ];
     this.lips = this.features.filter(f => f.lip).map(f => ({ s: f.lip, lane: f.lane }));
     this.zones = [
@@ -556,11 +558,10 @@ class Track {
       { type: 'mud', s0: 1172, s1: 1198, lat0: 3.5, lat1: 14 },
       { type: 'mud', s0: 690, s1: 715, lat0: -2.5, lat1: 2.5 },
     ];
+    // kept to the outside lane of corners, well clear of every jump's run-up and landing
     this.obstacles = [
-      { s: 137, lat: 0, type: 'tires' },
-      { s: 640, lat: -8.5, type: 'hay' },
-      { s: 936, lat: 7.5, type: 'hay' },
-      { s: 1130, lat: -1, type: 'tires' },
+      { s: 540, lat: -8.5, type: 'tires' },
+      { s: 1110, lat: -8.5, type: 'hay' },
     ];
   }
   idx(s) { s = ((s % this.L) + this.L) % this.L; return Math.min(this.N - 1, Math.round(s / this.ds)) % this.N; }
@@ -731,7 +732,8 @@ function freeHeight(x, z) {
     let p = 0;
     if (u >= 0 && u <= r.L) p = r.H * Math.pow(u / r.L, 1.7);
     else if (u > r.L && u < r.L + r.H * 1.2) p = r.H * (1 - smoother((u - r.L) / (r.H * 1.2)));
-    if (r.land) { const l = r.land, w = u - r.L - l.gap; if (w > 0) p = Math.max(p, SHAPE.mound(l.up, l.top, l.down, l.H)(w)); }
+    // landing humps rise at a rideable angle (no vertical walls); the top stays where it was
+    if (r.land) { const l = r.land, up = Math.max(l.up, l.H * 2.5), w = u - r.L - l.gap + (up - l.up); if (w > 0) p = Math.max(p, SHAPE.mound(up, l.top, l.down, l.H)(w)); }
     rampH = Math.max(rampH, p * side);
     const pad = (1 - smooth(r.W / 2 + 2, r.W / 2 + 7, Math.abs(v))) * (smooth(-6, -2, u) * smooth(reach + 6, reach + 2, u));
     dirt = Math.max(dirt, pad); loose = Math.max(loose, pad * (p > 0.5 ? 0.85 : 0.4));
@@ -1660,8 +1662,9 @@ const CFG = {
   heatRate: 0.30, coolRate: 0.1, overheatTime: 5, overheatVmax: 0.4,
   pitchAccel: 7.8, pitchDamp: 1.5, pitchMax: 5.8,
   cleanWindow: 0.22,      // |landing angle - slope| for a clean landing (≈12.6°)
-  frontCrash: 0.22,       // nose-down beyond this relative to the slope = front wheel first = wipeout
-  loopCrash: 1.2,         // looped out
+  frontCrash: 0.3,        // nose-down beyond this relative to the slope = front wheel first = wipeout
+  loopCrash: 1.25,        // looped out
+  assistK: 14, assistD: 6, // landing assist spring and damping
   preloadWindow: 0.45, preloadBase: 3.4, preloadPerV: 0.11,
   launchLook: 0.05, launchClear: 0.012,   // take-off look-ahead (s) and the gap (m) that counts as leaving the ground
 };
@@ -1675,7 +1678,7 @@ class Bike {
     this.loc = { i: 0, s: 0, lat: 0 };
     this.input = { steer: 0, lean: 0, throttle: 0, brake: 0, boost: false, jump: false };
     this.skill = { speed: 1 };
-    this.mud = 0; this.heat = 0; this.overheat = 0;
+    this.mud = 0; this.heat = 0; this.overheat = 0; this.assist = true;
     this.crashBike = { p: new V3(), v: new V3(), rot: new V3(), spin: new V3() };
     this.crashRider = { p: new V3(), v: new V3(), spin: new V3() };
     this.lap = 0; this.lapArmed = true; this.lastRel = 0; this.finished = false; this.finishTime = 0; this.lapStart = 0; this.bestLap = 0; this.lapTimes = [];
@@ -1804,6 +1807,15 @@ class Bike {
     this.vel.x = vx * c + vz * s; this.vel.z = -vx * s + vz * c;
     this.pos.addScaledVector(this.vel, dt);
     this.pitchVel += -inp.lean * CFG.pitchAccel * dt;
+    // Landing assist: with the lean released, ease the nose toward the slope we are about to land on.
+    // Any lean input fades it out, so flips and deliberate angles are still the rider's call.
+    const assist = this.assist ? 1 - Math.min(1, Math.abs(inp.lean)) : 0;
+    if (assist > 0) {
+      if (!(this.assistT > 0)) { this.assistTarget = this.landingSlope(); this.assistT = 0.08; }
+      this.assistT -= dt;
+      const e = wrapAngle(this.assistTarget + 0.04 - this.pitch);
+      this.pitchVel += (e * CFG.assistK - this.pitchVel * CFG.assistD) * assist * dt;
+    }
     this.pitchVel *= Math.exp(-CFG.pitchDamp * dt);
     this.pitchVel = clamp(this.pitchVel, -CFG.pitchMax, CFG.pitchMax);
     this.pitch += this.pitchVel * dt; this.flipAccum += this.pitchVel * dt;
@@ -1816,6 +1828,12 @@ class Bike {
     const hitF = w.fy - hf.get(w.fx, w.fz) < tol, hitR = w.ry - hf.get(w.rx, w.rz) < tol, hitT = w.ty <= hf.get(w.tx, w.tz);
     if (hitT && Math.cos(this.pitch) < 0.2) { this.crash(game, 'flip'); return; }
     if (hitF || hitR || this.pos.y <= gh) this.land(game, hitF && !hitR);
+  }
+  // slope angle where the current ballistic arc meets the ground
+  landingSlope() {
+    const hf = this.world.hf; let px = this.pos.x, py = this.pos.y, pz = this.pos.z, vy = this.vel.y;
+    for (let i = 0; i < 90; i++) { vy -= G * 0.035; px += this.vel.x * 0.035; py += vy * 0.035; pz += this.vel.z * 0.035; if (py <= hf.get(px, pz)) break; }
+    return Math.atan(hf.slope(px, pz, this.fx, this.fz));
   }
   land(game, frontFirst) {
     const hf = this.world.hf, fx = this.fx, fz = this.fz;
@@ -1832,10 +1850,12 @@ class Bike {
     let spd = vAlong, res = 'soft';
     if (big) {
       if (gp > 0.8) { this.speed = vAlong; this.crash(game, 'cased'); return; }
-      if (diff < -CFG.frontCrash) { this.speed = vAlong; this.crash(game, 'front'); return; }
+      // nose-down onto flat ground or a downslope is a wipeout; onto the face of a rise it just scrubs speed
+      if (diff < -CFG.frontCrash && gp < 0.12) { this.speed = vAlong; this.crash(game, 'front'); return; }
       if (diff > CFG.loopCrash) { this.speed = vAlong; this.crash(game, 'loop'); return; }
       if (Math.abs(diff) <= CFG.cleanWindow) { spd = Math.max(spd, 0) * 1.07 + 3.5; res = 'clean'; }
-      else { spd *= clamp(0.9 - (diff - CFG.cleanWindow) * 0.45, 0.62, 0.9); res = 'rear'; }
+      else if (diff > 0) { spd *= clamp(0.9 - (diff - CFG.cleanWindow) * 0.45, 0.62, 0.9); res = 'rear'; }
+      else { spd *= clamp(0.9 + (diff + CFG.cleanWindow) * 0.6, 0.6, 0.9); res = 'front'; }
       if (vNorm < -22 && res !== 'clean') spd *= 0.85;
     }
     this.speed = spd;
@@ -1991,12 +2011,9 @@ class AIDriver {
     if (b.lap !== this.lastLap) { this.lastLap = b.lap; this.splitChoice = Math.random() < sk.landing * 0.8 ? 'L' : (Math.random() < 0.5 ? 'M' : 'R'); }
     const inR = (a, c) => sA > a && sA < c;
     if (inR(55, 140)) { let ch = this.splitChoice; if (b.heat > 0.42) ch = 'R'; lat = LANES[ch]; }
-    if (inR(115, 145)) { if (Math.abs(lat) < 4.5) lat = b.loc.lat >= 0 ? 7 : -7; }
     if (inR(440, 495) || inR(1160, 1205)) lat = Math.min(lat, 0.5);
     if (inR(680, 720)) { if (Math.abs(lat) < 4.5) lat = b.loc.lat >= 0 ? 7.5 : -7.5; }
-    if (inR(615, 648)) lat = Math.max(lat, -2.5);
-    if (inR(910, 942)) lat = Math.min(lat, 2.5);
-    if (inR(1105, 1137)) { if (lat > -6 && lat < 4.5) lat = b.loc.lat > -1 ? 5.5 : -7.5; }
+    if (inR(520, 545) || inR(1090, 1115)) lat = Math.max(lat, -3);
     if (b.heat > 0.5 && inR(735, 780)) lat = 0;
     if (b.heat > 0.5 && inR(1280, 1318)) lat = 9;
     // aggression: lean on the player when alongside
@@ -2207,7 +2224,7 @@ const DIFF = { ROOKIE: { speed: 0.9, landing: [0.45, 0.7], corner: 0.92 }, PRO: 
 
 const Game = {
   state: 'menu', mode: 'menu', time: 0, raceTime: 0, bikes: [], ais: [], player: null, world: null, worlds: {},
-  opts: { opp: 5, laps: 3, diff: 'PRO', gas: true, gfx: 'HIGH' },
+  opts: { opp: 5, laps: 3, diff: 'PRO', gas: true, assist: true, gfx: 'HIGH' },
   quality: { particles: 1, texSize: 512, rut: 4096, shadow: 2048, pr: 1.5 },
   cam: { mode: 0, pos: new V3(0, 30, 0), look: new V3(), yaw: 0, fov: 62, shake: 0 },
   finishOrder: [], scrape: 0, resultsShown: false,
@@ -2288,7 +2305,7 @@ const Game = {
         const row = Math.floor(slot / 4), col = slot % 4, lat = -10 + col * (20 / 3) + (row % 2) * 1.5;
         tr.point(START_S - 3.5 - row * 6, lat, tmp);
         let b;
-        if (slot === playerSlot) { b = new Bike(PLAYER_SPEC, true, this.world); this.player = b; }
+        if (slot === playerSlot) { b = new Bike(PLAYER_SPEC, true, this.world); b.assist = this.opts.assist; this.player = b; }
         else {
           const sp = Object.assign({}, rivals[ri++ % rivals.length]); sp.num = [7, 12, 21, 33, 46, 88][ri % 6] + (ri > 6 ? 1 : 0);
           b = new Bike(sp, false, this.world);
@@ -2311,7 +2328,7 @@ const Game = {
     this.hideScreens(); this.showLoading(true);
     setTimeout(() => {
       this.loadWorld('free'); this.clearBikes();
-      const b = new Bike(PLAYER_SPEC, true, this.world); this.player = b; this.bikes.push(b);
+      const b = new Bike(PLAYER_SPEC, true, this.world); b.assist = this.opts.assist; this.player = b; this.bikes.push(b);
       const L = FREE.landmarks[1]; b.place(L.x, L.z, L.yaw);
       this.mode = 'free'; this.state = 'running'; this.cam.yaw = b.yaw; this.snapCam = true;
       $('hud').classList.remove('hidden'); $('raceHud').classList.add('hidden'); $('freeHud').classList.remove('hidden');
@@ -2381,6 +2398,7 @@ const Game = {
       HUD.msg(fl || 'CLEAN LANDING!', fl ? 'Clean landing boost' : '+ SPEED BOOST', '#ffe14d'); AudioSys.tone(660, 0.18, 0.15, 'square', 1.5);
       if (flips) this.player.stats.flips += Math.abs(flips);
     } else if (res === 'rear') HUD.msg('SKETCHY', 'Rear wheel first: speed lost', '#ffb300');
+    else if (res === 'front') HUD.msg('SKETCHY', 'Nose first into the rise: speed lost', '#ffb300');
     if (this.mode === 'free' && b.airTime > 0.6) {
       if (b.airTime > b.stats.bestAir) { b.stats.bestAir = b.airTime; if (b.airTime > 2 && res !== 'crash') HUD.msg('NEW BEST AIR!', b.airTime.toFixed(2) + 's', '#7cff4f'); }
     }
@@ -2593,6 +2611,7 @@ const Menu = {
       case 'laps': O.laps = O.laps === 2 ? 3 : O.laps === 3 ? 5 : 2; break;
       case 'diff': O.diff = O.diff === 'ROOKIE' ? 'PRO' : O.diff === 'PRO' ? 'CHAMPION' : 'ROOKIE'; break;
       case 'gas': O.gas = !O.gas; break;
+      case 'assist': O.assist = !O.assist; if (Game.player) Game.player.assist = O.assist; break;
       case 'gfx': O.gfx = O.gfx === 'HIGH' ? 'LOW' : 'HIGH'; Game.applyQuality(); Game.resetWorldState(); break;
       case 'help': $('menu').classList.add('hidden'); $('pause').classList.add('hidden'); $('help').classList.remove('hidden'); this.focus(0); break;
       case 'back': this.back(); break;
@@ -2600,7 +2619,7 @@ const Menu = {
       case 'restart': Game.restart(); break;
       case 'quit': Game.toMenu(); break;
     }
-    $('oOpp').textContent = O.opp; $('oLaps').textContent = O.laps; $('oDiff').textContent = O.diff; $('oGas').textContent = O.gas ? 'ON' : 'OFF'; $('oGfx').textContent = O.gfx;
+    $('oOpp').textContent = O.opp; $('oLaps').textContent = O.laps; $('oDiff').textContent = O.diff; $('oGas').textContent = O.gas ? 'ON' : 'OFF'; $('oAssist').textContent = O.assist ? 'ON' : 'OFF'; $('oGfx').textContent = O.gfx;
     try { localStorage.setItem('hillhop64', JSON.stringify(O)); } catch (e) { }
   },
 };

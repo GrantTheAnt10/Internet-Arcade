@@ -43,6 +43,7 @@ Touch buttons appear on touch screens when the game is opened on its own; inside
 
 - The bike leaves the ground when the terrain drops away faster than gravity can follow, so ramp lips and sharp crests launch you.
 - Tap pre-load just before a crest to compress the suspension and launch much higher.
+- Landing assist (on by default, toggle it in the menu) eases the nose toward the slope you're about to land on whenever you let go of lean. Leaning overrides it, so flips still work.
 - Lean in the air to set your landing angle. Land parallel to the slope for a speed boost. Landing rear wheel first costs speed. Landing front wheel first, or into the face of a landing, is a wipeout.
 - Holding turbo heats the engine. A full gauge means 5 seconds at crawling speed. Blue cool-down zones reset the gauge instantly.
 - Ruts are stamped into a render target and shaded with bump and parallax, so the racing lines deepen lap after lap. Roost, dust and mud spray are particles.
