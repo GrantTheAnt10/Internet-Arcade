@@ -31,11 +31,11 @@ const pick = arr => arr[Math.floor(Math.random() * arr.length)];
 const Kit = {
   W: 480, H: 360, scale: 1, ox: 0, oy: 0, t: 0,
   embed: /[?&]embed=1\b/.test(location.search) && window.parent !== window,
-  keys: Object.create(null), prev: Object.create(null), touch: Object.create(null),
+  keys: Object.create(null), prev: Object.create(null), touch: Object.create(null), pulse: Object.create(null),
   // logical buttons -> physical keys (the cabinet sends KeyJ/KeyK/KeyL/KeyI for its four buttons)
   MAP: {
     left: ['ArrowLeft', 'KeyA'], right: ['ArrowRight', 'KeyD'], up: ['ArrowUp', 'KeyW'], down: ['ArrowDown', 'KeyS'],
-    a: ['KeyJ', 'KeyZ', 'Space'], b: ['KeyK', 'KeyX'], c: ['KeyL', 'KeyC', 'ShiftLeft', 'ShiftRight'], d: ['KeyI', 'KeyV'],
+    a: ['KeyJ', 'KeyZ', 'Space'], b: ['KeyK', 'KeyX'], c: ['KeyL', 'KeyC', 'ShiftLeft', 'ShiftRight'], d: ['KeyI', 'KeyV'], e: ['KeyU'], f: ['KeyO'],
     start: ['Enter'], pause: ['Escape', 'KeyP'],
   },
   pad: Object.create(null), padPrev: Object.create(null), stick: { x: 0, y: 0 },
@@ -72,7 +72,7 @@ const Kit = {
   },
   down(code) {
     if (this.keys[code]) return;
-    this.keys[code] = true; this.audioInit();
+    this.keys[code] = true; this.pulse[code] = true; this.audioInit();
     if (this.MAP.pause.includes(code)) {
       if (code === 'Escape' && this.embed && this.onTitle && this.onTitle()) { parent.postMessage({ type: 'hh-exit' }, '*'); return; }
       this.onPause && this.onPause();
@@ -82,12 +82,14 @@ const Kit = {
   up(code) { this.keys[code] = false; },
   held(name) {
     if (this.touch[name] || this.pad[name]) return true;
-    for (const k of this.MAP[name]) if (this.keys[k]) return true;
+    for (const k of this.MAP[name]) if (this.keys[k] || this.pulse[k]) return true;
     return false;
   },
+  // a key counts as held for at least one game step, so very quick taps are never lost
+  isDown(code) { return !!(this.keys[code] || this.pulse[code]); },
   // true only on the step the button went down
   hit(name) { return this.held(name) && !this.prev[name]; },
-  latch() { for (const n in this.MAP) this.prev[n] = this.held(n); },
+  latch() { for (const n in this.MAP) this.prev[n] = this.held(n); for (const k in this.pulse) delete this.pulse[k]; },
   axisX() { return this.stick.x || ((this.held('right') ? 1 : 0) - (this.held('left') ? 1 : 0)); },
   axisY() { return this.stick.y || ((this.held('down') ? 1 : 0) - (this.held('up') ? 1 : 0)); },
   pollPad() {
@@ -99,7 +101,7 @@ const Kit = {
       const ax = p.axes[0] || 0, ay = p.axes[1] || 0;
       if (Math.abs(ax) > 0.25) this.stick.x = ax; if (Math.abs(ay) > 0.25) this.stick.y = ay;
       P.left = P.left || b(14); P.right = P.right || b(15); P.up = P.up || b(12); P.down = P.down || b(13);
-      P.a = P.a || b(0); P.b = P.b || b(1); P.c = P.c || b(2); P.d = P.d || b(3);
+      P.a = P.a || b(0); P.b = P.b || b(1); P.c = P.c || b(2); P.d = P.d || b(3); P.e = P.e || b(5); P.f = P.f || b(7);
       const st = b(9);
       if (st && !this.padPrev.start) { this.audioInit(); this.onStart && this.onStart(); }
       this.padPrev.start = st;
@@ -182,6 +184,8 @@ const Kit = {
     if (L.b) mk('b', L.b, { right: '90px', bottom: '20px' });
     if (L.c) mk('c', L.c, { right: '30px', bottom: '116px' });
     if (L.d) mk('d', L.d, { right: '104px', bottom: '96px' });
+    if (L.e) mk('e', L.e, { right: '178px', bottom: '76px' });
+    if (L.f) mk('f', L.f, { right: '178px', bottom: '150px' });
     mk('start', 'START', { right: '50%', top: '8px', width: '70px', height: '34px', borderRadius: '17px', transform: 'translateX(50%)', fontSize: '12px' });
   },
 };

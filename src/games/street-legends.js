@@ -128,20 +128,21 @@ const S = {
 /* =====================================================================
    INPUT
    ===================================================================== */
-const PAD_BTNS = { lp: 2, hp: 3, lk: 0, hk: 1 };
+const PAD_BTNS = { lp: 2, hp: 3, lk: 0, hk: 1, sp: 5, su: 7 };
+const BTNS = ['lp', 'hp', 'lk', 'hk', 'sp', 'su'];
 class Controller {
   constructor(kind) { this.kind = kind; this.hist = []; this.btn = {}; this.prevBtn = {}; this.press = {}; this.dirAbs = { x: 0, y: 0 }; }
   read(face, ai) {
     let x = 0, y = 0, b = {};
-    const k = c => !!Kit.keys[c];
+    const k = c => Kit.isDown(c);
     if (this.kind === 'cpu') { x = ai.x; y = ai.y; b = ai.btn; }
     else if (this.kind === 'solo') {
       x = Kit.axisX(); y = -Kit.axisY(); x = Math.abs(x) > 0.4 ? Math.sign(x) : 0; y = Math.abs(y) > 0.4 ? Math.sign(y) : 0;
-      b = { lp: Kit.held('a'), hp: Kit.held('b'), lk: Kit.held('c'), hk: Kit.held('d') };
+      b = { lp: Kit.held('a'), hp: Kit.held('b'), lk: Kit.held('c'), hk: Kit.held('d'), sp: Kit.held('e'), su: Kit.held('f') };
     } else {
       const p2 = this.kind === 'p2', pad = (navigator.getGamepads ? navigator.getGamepads() : [])[p2 ? 1 : 0];
-      if (p2) { x = (k('ArrowRight') ? 1 : 0) - (k('ArrowLeft') ? 1 : 0); y = (k('ArrowUp') ? 1 : 0) - (k('ArrowDown') ? 1 : 0); b = { lp: k('KeyJ'), hp: k('KeyK'), lk: k('KeyL'), hk: k('KeyI') }; }
-      else { x = (k('KeyD') ? 1 : 0) - (k('KeyA') ? 1 : 0); y = (k('KeyW') ? 1 : 0) - (k('KeyS') ? 1 : 0); b = { lp: k('KeyF'), hp: k('KeyG'), lk: k('KeyR'), hk: k('KeyT') }; }
+      if (p2) { x = (k('ArrowRight') ? 1 : 0) - (k('ArrowLeft') ? 1 : 0); y = (k('ArrowUp') ? 1 : 0) - (k('ArrowDown') ? 1 : 0); b = { lp: k('KeyJ'), hp: k('KeyK'), lk: k('KeyL'), hk: k('KeyI'), sp: k('KeyU'), su: k('KeyO') }; }
+      else { x = (k('KeyD') ? 1 : 0) - (k('KeyA') ? 1 : 0); y = (k('KeyW') ? 1 : 0) - (k('KeyS') ? 1 : 0); b = { lp: k('KeyF'), hp: k('KeyG'), lk: k('KeyR'), hk: k('KeyT'), sp: k('KeyH'), su: k('KeyY') }; }
       if (pad) {
         const ax = pad.axes[0] || 0, ay = pad.axes[1] || 0, pb = i => pad.buttons[i] && pad.buttons[i].pressed;
         if (Math.abs(ax) > 0.4) x = Math.sign(ax); if (Math.abs(ay) > 0.4) y = -Math.sign(ay);
@@ -153,8 +154,8 @@ class Controller {
     const rx = x * face, num = 5 + rx + 3 * y;
     this.dir = num;
     this.hist.push(num); if (this.hist.length > 40) this.hist.shift();
-    for (const n of ['lp', 'hp', 'lk', 'hk']) { this.press[n] = b[n] && !this.prevBtn[n]; this.prevBtn[n] = b[n]; this.btn[n] = b[n]; }
-    if (this.press.lp || this.press.hp || this.press.lk || this.press.hk) this.lastPress = { ...this.press, age: 0 }; else if (this.lastPress) this.lastPress.age++;
+    for (const n of BTNS) { this.press[n] = b[n] && !this.prevBtn[n]; this.prevBtn[n] = b[n]; this.btn[n] = b[n]; }
+    if (BTNS.some(n => this.press[n])) this.lastPress = { ...this.press, age: 0 }; else if (this.lastPress) this.lastPress.age++;
   }
   // does the recent direction history contain this sequence (in order) within `win` frames?
   motion(seq, win = 18) {
@@ -251,6 +252,15 @@ class Fighter {
     const P = p.lp || p.hp, K = p.lk || p.hk, sp = this.ch.specials, last = c.lastDir();
     if (S.phase !== 'fight') return false;
     // super
+    // one-button inputs: SUPER (or HP + HK together) when the bar is full, and SPECIAL with a direction
+    const both = (p.hp && c.btn.hk) || (p.hk && c.btn.hp);
+    if ((p.su || both) && sp.super && this.meter >= 100) return this.startSpecial(sp.super, true);
+    if (p.su && !both) { c.lastPress = null; return false; }
+    if (p.sp) {
+      const d = c.dir, id = d <= 3 ? (sp.dp_p || sp.dp_k) : (d === 4 || d === 7) ? (sp.qcb_k || sp.qcb_p) : (sp.qcf_p || sp.qcb_p);
+      if (!this.startSpecial(id)) c.lastPress = null;
+      return true;
+    }
     if (P && sp.super && this.meter >= 100 && (c.motion([2, 3, 6, 2, 3, 6], 34))) return this.startSpecial(sp.super, true);
     if (P && sp.dp_p && last === 3 && c.motion([6, 2, 3], 16)) return this.startSpecial(sp.dp_p);
     if (K && sp.dp_k && last === 3 && c.motion([6, 2, 3], 16)) return this.startSpecial(sp.dp_k);
@@ -271,6 +281,7 @@ class Fighter {
   }
   tryAirAttack() {
     const p = this.ctrl.lastPress; if (!p || p.age > 3) return false;
+    if (!(p.lp || p.hp || p.lk || p.hk)) return false;
     this.ctrl.lastPress = null; this.airAtk = true;
     this.startNormal('j' + (p.lp ? 'LP' : p.hp ? 'HP' : p.lk ? 'LK' : 'HK')); return true;
   }
@@ -1059,7 +1070,8 @@ function drawHUD(g) {
     const my = 344, mw = 120, mx = left ? 14 : SW - 14 - mw;
     g.fillStyle = INK; g.fillRect(mx - 2, my - 2, mw + 4, 10); g.fillStyle = '#1a1a3a'; g.fillRect(mx, my, mw, 6);
     const full = f.meter >= 100; g.fillStyle = full ? (Kit.blink(4) ? '#fff' : '#2fe6ff') : '#2f8bff'; const mwv = mw * f.meter / 100; left ? g.fillRect(mx, my, mwv, 6) : g.fillRect(mx + mw - mwv, my, mwv, 6);
-    Kit.text(full ? 'SUPER READY' : 'SUPER', left ? mx + mw + 6 : mx - 6, my + 3, 9, full ? '#2fe6ff' : '#9aa', left ? 'left' : 'right', { stroke: INK });
+    const human = f.ctrl.kind !== 'cpu';
+    Kit.text(full ? (human ? 'SUPER READY · PRESS SUPER' : 'SUPER READY') : 'SUPER', left ? mx + mw + 6 : mx - 6, my + 3, 9, full ? '#2fe6ff' : '#9aa', left ? 'left' : 'right', { stroke: INK });
   }
   // timer
   g.fillStyle = INK; g.beginPath(); g.roundRect(SW / 2 - 20, 8, 40, 30, 6); g.fill();
@@ -1086,7 +1098,7 @@ function drawTitle(g) {
   g.restore();
   MENU().forEach(([label], i) => { const on = i === S.menu, y = 200 + i * 30; if (on) { g.fillStyle = 'rgba(255,59,59,.3)'; g.fillRect(SW / 2 - 120, y - 13, 240, 26); } Kit.text((on ? '▶ ' : '') + label, SW / 2, y, on ? 19 : 16, on ? '#ffd21f' : '#fff'); });
   Kit.mono('↑ ↓ choose   ·   PUNCH / START to pick', SW / 2, 302, 9, '#bbb', 'center');
-  Kit.mono('LP J · HP K · LK L · HK I    2P: P1 WASD + F G R T, P2 arrows + J K L I', SW / 2, 318, 8, '#999', 'center');
+  Kit.mono('LP J · HP K · LK L · HK I · SPECIAL U · SUPER O    2P: P1 WASD + F G R T H Y, P2 arrows + J K L I U O', SW / 2, 318, 7, '#999', 'center');
   const best = Kit.hi('street-legends'); if (best) Kit.mono('ARCADE CLEARED ' + (best >= 4 ? '★' : best + '/4'), SW / 2, 334, 9, '#ffd21f', 'center');
 }
 function drawSelect(g) {
@@ -1100,7 +1112,10 @@ function drawSelect(g) {
   if (S.mode === 'versus') { const p2 = CHARS[S.sel[1]]; _floorDraw(g, p2, 370, 250, 1.35, -1); Kit.text(p2.name, 370, 272, 22, p2.color, 'center', { glow: p2.color, blur: 10 }); Kit.mono(p2.title, 370, 290, 9, '#ddd', 'center'); }
   else { const sp = p1.specials; const lines = Object.entries(sp).map(([k, v]) => [{ qcf_p: '↓↘→ + P', dp_p: '→↓↘ + P', dp_k: '→↓↘ + K', qcb_k: '↓↙← + K', qcb_p: '↓↙← + P', super: '↓↘→↓↘→ + P' }[k], v.replace(/([A-Z])/g, ' $1').toUpperCase()]);
     Kit.text('MOVES', 360, 96, 14, '#ffd21f'); lines.forEach(([m, n], i) => { Kit.mono(n, 290, 120 + i * 20, 9, '#fff'); Kit.mono(m, 470, 120 + i * 20, 9, '#2fe6ff', 'right'); });
-    Kit.mono('THROW: → or ← + HP up close', 290, 120 + lines.length * 20, 9, '#bbb'); Kit.mono('DASH: →→  ·  BLOCK: hold ←', 290, 134 + lines.length * 20, 9, '#bbb'); }
+    Kit.mono('THROW: → or ← + HP up close', 290, 120 + lines.length * 20, 9, '#bbb'); Kit.mono('DASH: →→  ·  BLOCK: hold ←', 290, 134 + lines.length * 20, 9, '#bbb');
+    Kit.text('EASY MODE BUTTONS', 360, 166 + lines.length * 20, 11, '#ffd21f');
+    Kit.mono('SPECIAL: ' + [sp.qcf_p, sp.dp_p || sp.dp_k, sp.qcb_k || sp.qcb_p].map((v, i) => ['', '↓ + ', '← + '][i] + v.replace(/([A-Z])/g, ' $1').toUpperCase()).join(' · '), 360, 184 + lines.length * 20, 7, '#fff', 'center');
+    Kit.mono('SUPER: press SUPER when the bar is full', 360, 198 + lines.length * 20, 8, '#2fe6ff', 'center'); }
   // roster
   CHARS.forEach((c, i) => {
     const x = SW / 2 - 104 + i * 52, y = 310, on0 = S.sel[0] === i, on1 = S.mode === 'versus' && S.sel[1] === i;
@@ -1148,7 +1163,7 @@ function drawEnding(g) {
 
 /* ---------- boot ---------- */
 Kit.init({
-  W: 480, H: 360, update, render, touchLabels: { a: 'LP', b: 'HP', c: 'LK', d: 'HK' },
+  W: 480, H: 360, update, render, touchLabels: { a: 'LP', b: 'HP', c: 'LK', d: 'HK', e: 'SPCL', f: 'SUPER' },
   onStart() {
     if (S.screen === 'title') MENU()[S.menu][1]();
     else if (S.screen === 'fight') S.paused = !S.paused;

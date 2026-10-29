@@ -92,6 +92,9 @@ body.zoomed .cab:not(.sel){filter:brightness(.25)}
 .pb{position:absolute;width:54px;height:54px;border-radius:50%;border:0;padding:0;cursor:pointer;touch-action:none;
   background:radial-gradient(circle at 38% 32%,rgba(255,255,255,.85) 0 7%,var(--b) 32%,color-mix(in srgb,var(--b) 55%,#000) 100%);
   box-shadow:0 6px 0 #000,inset 0 -5px 8px rgba(0,0,0,.35);transition:transform .06s,box-shadow .06s}
+.pbs.six{left:134px;top:24px;width:190px}
+.pbs.six .pb{width:48px;height:48px}
+.pbs.six .pb i{top:52px}
 .pb.on{transform:translateY(4px);box-shadow:0 2px 0 #000,0 0 22px var(--b),inset 0 -5px 8px rgba(0,0,0,.35)}
 .pb i{position:absolute;left:50%;top:59px;transform:translateX(-50%);font-style:normal;font-family:Arial,sans-serif;font-weight:bold;font-size:10px;letter-spacing:.5px;color:#cfc6ef;white-space:nowrap;pointer-events:none}
 .start{position:absolute;left:26px;top:14px;width:96px;height:24px;border:0;border-radius:12px;cursor:pointer;touch-action:none;
@@ -260,8 +263,8 @@ const MACHINES = [
     buttons: [['LAUNCH', 'KeyJ', '#3bff4a'], ['LASER', 'KeyK', '#ff3b3b'], ['FIRE', 'KeyL', '#28d7ff'], ['FIRE', 'KeyI', '#ffd21f']] },
   { title: 'STREET LEGENDS', sub: 'One-on-one street fighter', c1: '#ff3b3b', c2: '#ffd21f', mq: 26, art: 'fighter', src: 'StreetLegends.html?embed=1',
     legend: [['← →', 'Walk · hold back to block'], ['↑ ↓', 'Jump · crouch'], ['J / K', 'Light / heavy punch'], ['L / I', 'Light / heavy kick'],
-             ['↓↘→ + P', 'Projectile'], ['→↓↘ + P/K', 'Rising attack'], ['↓↙← + K', 'Spin / rush kick'], ['Esc', 'Pause · on the title screen, back to the arcade']],
-    buttons: [['LP', 'KeyJ', '#2fe6ff'], ['HP', 'KeyK', '#ff3b3b'], ['LK', 'KeyL', '#3bff4a'], ['HK', 'KeyI', '#ffd21f']] },
+             ['U', 'Special (hold ↓ or ← for the others)'], ['O', 'Super when the bar is full'], ['Esc', 'Pause · on the title screen, back to the arcade']],
+    buttons: [['LP', 'KeyJ', '#2fe6ff'], ['HP', 'KeyK', '#ff3b3b'], ['SPECIAL', 'KeyU', '#ff3bd4'], ['LK', 'KeyL', '#3bff4a'], ['HK', 'KeyI', '#ffd21f'], ['SUPER', 'KeyO', '#ffffff']] },
   { title: 'SKYLINE SKATER', sub: 'Rooftop skate runner', c1: '#b04bff', c2: '#ff3b8a', mq: 26, art: 'skater', src: 'SkylineSkater.html?embed=1',
     legend: [['J / Space / ↑', 'Ollie (hold = higher)'], ['K', 'Kickflip'], ['L', 'Grab (hold)'], ['I / ↓', '360 spin'], ['Esc', 'Pause · on the title screen, back to the arcade']],
     buttons: [['JUMP', 'KeyJ', '#3bff4a'], ['FLIP', 'KeyK', '#ff3bd4'], ['GRAB', 'KeyL', '#28d7ff'], ['SPIN', 'KeyI', '#ffd21f']] },
@@ -304,11 +307,14 @@ const cabs = MACHINES.map((m, i) => {
   el.style.setProperty('--c1', m.c1); el.style.setProperty('--c2', m.c2);
   const att = ATTRACT[m.art] ? ATTRACT[m.art]() : `<div class="attract att-soon"><div class="att-title">COMING<br>SOON</div><div class="press">NO GAME LOADED</div></div>`;
   const btns = (m.buttons || DEFAULT_BUTTONS).map(([label, code, col], k) =>
-    `<button class="pb" data-code="${code}" style="--b:${col};left:${(k % 2) * 74 + (k > 1 ? 30 : 10)}px;top:${k > 1 ? 76 : 0}px" aria-label="${label}"><i>${label}</i></button>`).join('');
+    (m.buttons || DEFAULT_BUTTONS).length > 4
+      // six-button fighter layout: two rows of three, the lower row nudged right
+      ? `<button class="pb" data-code="${code}" style="--b:${col};left:${(k % 3) * 58 + (k > 2 ? 12 : 0)}px;top:${k > 2 ? 72 : 0}px" aria-label="${label}"><i>${label}</i></button>`
+      : `<button class="pb" data-code="${code}" style="--b:${col};left:${(k % 2) * 74 + (k > 1 ? 30 : 10)}px;top:${k > 1 ? 76 : 0}px" aria-label="${label}"><i>${label}</i></button>`).join('');
   el.innerHTML = `<div class="floorglow"></div><div class="body"></div><div class="side l"></div><div class="side r"></div>
     <div class="marquee"><span${m.mq ? ` style="font-size:${m.mq}px"` : ''}>${m.title}</span></div>
     <div class="bezel"><div class="screen">${att}<div class="credit">CREDIT 01</div><div class="glass"></div></div></div>
-    <div class="panel"><button class="start" aria-label="Start">START</button><div class="stick" aria-label="Joystick"><div class="knob"></div></div><div class="pbs">${btns}</div></div>
+    <div class="panel"><button class="start" aria-label="Start">START</button><div class="stick" aria-label="Joystick"><div class="knob"></div></div><div class="pbs${(m.buttons || DEFAULT_BUTTONS).length > 4 ? ' six' : ''}">${btns}</div></div>
     <div class="coin"><div class="coinlbl">INSERT COIN</div><div class="slots"><i class="slot"><b></b><u>25¢</u></i><i class="slot"><b></b><u>25¢</u></i></div><div class="coinfly">★</div></div>
     <div class="plate">${m.title}<small>${m.sub}</small></div>`;
   world.appendChild(el);
